@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass
+import argparse
 from pathlib import Path
 from typing import Iterable
 
@@ -141,14 +142,45 @@ def save_figure(fig: plt.Figure, run: RunInfo) -> Path:
 
 
 def main() -> None:
-    results_root = require_env_path('RESULTS') / 'plaintext'
-    run = latest_run(results_root)
-    print(f"Using the most recent folder: {run.folder}")
+    parser = argparse.ArgumentParser(description="Plot training results.")
+    parser.add_argument("--all", action="store_true", help="Plot all runs under $RESULTS/plaintext")
+    args = parser.parse_args()
 
-    df = load_results(run)
-    fig = plot_metrics(df, run)
-    output_path = save_figure(fig, run)
-    print(f"Plot saved to: {output_path}")
+    results_root = require_env_path('RESULTS') / 'plaintext'
+
+    if args.all:
+        any_plotted = False
+        for folder in iter_run_folders(results_root):
+            try:
+                run = latest_run(folder.parent) if False else RunInfo(
+                    folder=folder,
+                    batch_size=int(next(p for p in folder.name.split('_') if p.startswith('b'))[1:]),
+                    lr=float(next(p for p in folder.name.split('_') if p.startswith('lr'))[2:]),
+                )
+            except Exception:
+                # Skip folders that don't follow naming convention
+                continue
+
+            try:
+                df = load_results(run)
+            except ResultsConfigError:
+                continue
+
+            fig = plot_metrics(df, run)
+            output_path = save_figure(fig, run)
+            print(f"Plot saved to: {output_path}")
+            any_plotted = True
+
+        if not any_plotted:
+            raise ResultsConfigError(f"No valid runs found under {results_root}")
+    else:
+        run = latest_run(results_root)
+        print(f"Using the most recent folder: {run.folder}")
+
+        df = load_results(run)
+        fig = plot_metrics(df, run)
+        output_path = save_figure(fig, run)
+        print(f"Plot saved to: {output_path}")
 
 
 if __name__ == '__main__':

@@ -2,6 +2,7 @@
 slurm
 random
 .vscode
+slurm_scripts/batch_size_*.sbatch
 __pycache__
 *.pyc
 *.pyo
