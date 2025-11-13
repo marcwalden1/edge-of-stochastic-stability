@@ -981,6 +981,7 @@ if __name__ == '__main__':
     # --- Optimizer Variants ---
     parser.add_argument('--momentum', type=float, default=None, help='Momentum for SGD optimizer')
     parser.add_argument('--adam', action='store_true', help='If set, use Adam optimizer instead of SGD')
+    parser.add_argument('--nesterov', action='store_true', help='Use Nesterov momentum with SGD (requires --momentum > 0)')
     
     # --- Measurement Flags (Primary) ---
     # parser.add_argument('--fullbs', action='store_true', help='If set, compute the lambda_max, aka FullBS')
@@ -1081,6 +1082,13 @@ if __name__ == '__main__':
 
     if args.momentum is not None and args.momentum < 1e-4 and not args.adam:
         args.momentum = None  # if momentum is too small, just use SGD without momentum
+
+    # Nesterov validation: only valid for SGD with positive momentum
+    if args.nesterov:
+        if args.adam:
+            raise ValueError("Nesterov is only supported for SGD, not Adam")
+        if args.momentum is None or args.momentum <= 0:
+            raise ValueError("Nesterov requires --momentum > 0 with SGD")
 
     
     # --- Argument Validation ---
@@ -1226,7 +1234,7 @@ if __name__ == '__main__':
         # param_reference = {k: v.to(device) for k, v in param_reference.items()}
 
     # ----- Optimizer Preparation -----
-    optimizer = prepare_optimizer(net, args.lr, args.momentum, args.adam)
+    optimizer = prepare_optimizer(net, args.lr, args.momentum, args.adam, args.nesterov)
 
     # ----- Checkpoint Cadence Determination -----
     if args.checkpoint_every is not None:

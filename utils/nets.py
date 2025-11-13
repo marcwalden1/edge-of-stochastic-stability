@@ -431,15 +431,20 @@ def initialize_net(net, scale=None, seed=None):
             raise ValueError("Unknown net type")
 
 
-def prepare_optimizer(net, lr, momentum, adam):
+def prepare_optimizer(net, lr, momentum, adam, nesterov: bool = False):
     if adam:
         if momentum is not None:
             raise ValueError("Momentum is not supported for Adam, just because. Change the code if you need to change the params in Adam")
         return T.optim.Adam(net.parameters(), lr=lr, betas=(0.9, 0.999))
+    
     if momentum is not None:
-        return T.optim.SGD(net.parameters(), lr=lr, momentum=momentum)
+        # PyTorch expects the keyword 'nesterov' (lowercase) and requires momentum > 0
+        return T.optim.SGD(net.parameters(), lr=lr, momentum=momentum, nesterov=bool(nesterov))
+
+        
     
     return T.optim.SGD(net.parameters(), lr=lr, momentum=0)
+
 
 
 def get_path_of_last_net(path: Union[str, Path], not_final=False):
