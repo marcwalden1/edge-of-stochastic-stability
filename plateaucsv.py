@@ -1,0 +1,182 @@
+#!/usr/bin/env python3
+"""
+Calculate plateau/stabilizing values from training results.
+Reads results.txt files written by training.py and computes moving averages and plateau values,
+then writes plateau_values.csv and plateau_values.json next to this script.
+"""
+
+from __future__ import annotations
+
+import json
+import os
+from pathlib import Path
+from typing import Any, Dict, List
+
+import pandas as pd
+
+
+def _parse_batch_and_lr_from_folder(folder_name: str) -> tuple[int | None, float | None]:
+    batch_size: int | None = None
+    lr: float | None = None
+    parts = folder_name.split('_')
+    for part in parts:
+        if part.startswith('b') and part[1:].isdigit():
+            batch_size = int(part[1:])
+        elif part.startswith('lr'):
+            try:
+                lr = float(part[2:])
+            except ValueError:
+                pass
+    return batch_size, lr
+
+
+def calculate_plateau_values(results_root: Path) -> List[Dict[str, Any]]:
+    """Calculate plateau values for all runs under results_root.
+
+    Returns a list of dicts (one per run) containing plateau/moving-average/final values.
+    """
+    results: List[Dict[str, Any]] = []
+
+    for folder in sorted(p for p in results_root.iterdir() if p.is_dir()):
+        results_file = folder / 'results.txt'
+        if not results_file.exists():
+            continue
+
+        batch_size, lr = _parse_batch_and_lr_from_folder(folder.name)
+        if batch_size is None:
+            # Skip folders that don't follow the naming convention
+            continue
+
+        try:
+            # Read metrics; ignore commented header lines starting with '#'
+            df = pd.read_csv(
+                results_file,
+                sep=',',
+                header=None,
+                names=[
+                    'epoch',
+                    'step',
+                    'batch_loss',
+                    'full_loss',
+                    'lambda_max',
+                    'step_sharpness',
+                    'batch_sharpness',
+                    'gni',
+                    'full_accuracy',
+                ],
+                na_values=['nan'],
+                skipinitialspace=True,
+                comment='#',  # skip the single header line written by initialize_folders
+                engine='python',
+            )
+
+            if df.empty:
+                continue
+
+            # Robust typing
+            for col in ['epoch', 'step']:
+                if col in df.columns:
+                    df[col] = pd.to_numeric(df[col], errors='coerce')
+
+            # Window for moving average: 10% of available steps (>=1)
+            window = max(1, int(len(df) * 0.1))
+            # Plateau window: last 20% of steps
+            plateau_start_idx = int(len(df) * 0.8)
+
+            result: Dict[str, Any] = {
+                'batch_size': batch_size,
+                'learning_rate': lr,
+                'folder': folder.name,
+                'total_steps': int(len(df)),
+                'final_step': int(df['step'].iloc[-1]) if 'step' in df.columns and not df['step'].isna().all() else None,
+            }
+
+            # Metrics to aggregate
+            metrics = ['batch_sharpness', 'lambda_max', 'step_sharpness', 'gni', 'full_loss']
+            for metric in metrics:
+                if metric not in df.columns:
+                    continue
+                series = pd.to_numeric(df[metric], errors='coerce').dropna()
+                if series.empty:
+                    continue
+
+                # Moving average over the run
+                ma = series.rolling(window=window, center=True, min_periods=1).mean()
+                result[f'{metric}_moving_avg_final'] = float(ma.iloc[-1]) if not ma.empty else None
+
+                # Plateau: average of the last 20%
+                plateau_series = series.iloc[plateau_start_idx:] if plateau_start_idx < len(series) else series
+                result[f'{metric}_plateau'] = float(plateau_series.mean()) if not plateau_series.empty else None
+                result[f'{metric}_plateau_std'] = float(plateau_series.std()) if not plateau_series.empty else None
+
+                # Final value in the log
+                result[f'{metric}_final'] = float(series.iloc[-1]) if not series.empty else None
+
+            results.append(result)
+
+        except Exception as e:
+            print(f"Error processing {folder.name}: {e}", file=os.sys.stderr)
+            continue
+
+    return sorted(results, key=lambda x: x['batch_size'])
+
+
+def main() -> int:
+    # Resolve RESULTS directory and default to ~/results
+    results_base = os.environ.get('RESULTS')
+    if results_base:
+        base = Path(results_base)
+    else:
+        base = Path(os.path.expanduser('~/results'))
+
+    # Expected structure: RESULTS/plaintext/cifar10_mlp/<timestamp>_lrXXXX_bYYYY
+    results_root = base / 'plaintext' / 'cifar10_mlp'
+
+    if not results_root.exists():
+        print(f"Error: Results directory not found: {results_root}")
+        print("Set RESULTS env var or ensure ~/results/plaintext/cifar10_mlp exists")
+        return 1
+
+    print(f"Analyzing results in: {results_root}")
+    print("Calculating plateau values...")
+
+    results = calculate_plateau_values(results_root)
+
+    if not results:
+        print("No results found!")
+        return 1
+
+    # Output paths next to this script
+    out_dir = Path(__file__).parent
+    #output_json = out_dir / 'plateau_values.json'
+    output_csv = out_dir / 'plateau_values.csv'
+
+    # Save JSON
+    #with open(output_json, 'w') as f:
+    #    json.dump(results, f, indent=2)
+    #print(f"\nSaved JSON results to: {output_json}")
+
+    # Save CSV
+    df = pd.DataFrame(results)
+    df.to_csv(output_csv, index=False)
+    print(f"Saved CSV results to: {output_csv}")
+
+    # Print brief summary (first 10 runs)
+    print(f"\nFound {len(results)} completed runs")
+    print("\nSummary (batch_size, batch_sharpness_plateau, lambda_max_plateau):")
+    for r in results[:10]:
+        bs = r.get('batch_size')
+        bsp = r.get('batch_sharpness_plateau')
+        lmp = r.get('lambda_max_plateau')
+        bsp_str = f"{bsp:.4f}" if isinstance(bsp, (int, float)) and bsp is not None else "N/A"
+        lmp_str = f"{lmp:.4f}" if isinstance(lmp, (int, float)) and lmp is not None else "N/A"
+        print(f"  Batch {bs:4d}: batch_sharpness={bsp_str:>8}, lambda_max={lmp_str:>8}")
+    if len(results) > 10:
+        print(f"  ... and {len(results) - 10} more")
+
+    return 0
+
+
+if __name__ == '__main__':
+    import sys
+    sys.exit(main())
