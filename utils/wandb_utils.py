@@ -365,6 +365,108 @@ def load_checkpoint_wandb(checkpoint_info, model, optimizer=None):
     }
 
 
+def save_projected_weights_wandb(
+    model,
+    step,
+    run_id=None,
+    projection_dim=5000,
+    seed=None,
+    save_every_n_steps=None
+):
+    """
+    Save projected model weights as wandb artifact for trajectory tracking.
+    
+    Parameters:
+    -----------
+    model : torch.nn.Module
+        The model whose weights to project and save
+    step : int
+        Current training step
+    run_id : str, optional
+        Wandb run ID. If None, uses current run
+    projection_dim : int
+        Target dimension for projection (default: 10000)
+    seed : int, optional
+        Random seed for projection matrix initialization
+    save_every_n_steps : int, optional
+        Frequency of saving. If provided, only saves if step % save_every_n_steps == 0
+        
+    Returns:
+    --------
+    str or None
+        Artifact name if saved, None if skipped
+    """
+    if save_every_n_steps is not None and step % save_every_n_steps != 0:
+        return None
+    
+    if not WANDB_AVAILABLE:
+        raise RuntimeError("wandb is not available; cannot save projected weights as artifacts.")
+    
+    if run_id is None:
+        if wandb.run is None:
+            raise RuntimeError("run_id must be provided when wandb is disabled.")
+        run_id = wandb.run.id
+        run = wandb.run
+    else:
+        # If run_id is provided but we're not in that run, we can't log artifacts
+        # This is a limitation - artifacts must be logged to the active run
+        if wandb.run is None or wandb.run.id != run_id:
+            raise RuntimeError("Cannot log artifacts to a different run. Artifacts must be logged to the active wandb run.")
+        run = wandb.run
+    
+    # Import projection utilities
+    from utils.projection import project_weights, get_projection_metadata
+    
+    # Project the weights
+    projected_weights = project_weights(
+        model=model,
+        projection_dim=projection_dim,
+        seed=seed
+    )
+    
+    # Get metadata
+    metadata = get_projection_metadata(
+        model=model,
+        projection_dim=projection_dim,
+        seed=seed
+    )
+    metadata['step'] = step
+    metadata['run_id'] = run_id
+    
+    # Create temporary directory for artifact files
+    import tempfile
+    with tempfile.TemporaryDirectory() as tmpdir:
+        tmp_path = Path(tmpdir)
+        
+        # Save projected weights as numpy array
+        weights_path = tmp_path / "projected_weights.npy"
+        np.save(weights_path, projected_weights)
+        
+        # Save metadata
+        metadata_path = tmp_path / "metadata.json"
+        with open(metadata_path, 'w') as f:
+            json.dump(metadata, f, indent=2)
+        
+        # Create wandb artifact
+        artifact_name = f"projected_weights_step_{step:06d}"
+        artifact = wandb.Artifact(
+            name=artifact_name,
+            type="projected_weights",
+            description=f"Projected model weights at step {step} (dim={projection_dim})"
+        )
+        
+        # Add files to artifact
+        artifact.add_file(str(weights_path), name="projected_weights.npy")
+        artifact.add_file(str(metadata_path), name="metadata.json")
+        
+        # Log artifact to wandb
+        run.log_artifact(artifact)
+        
+        print(f"Saved projected weights artifact: {artifact_name} (step {step})")
+        
+        return artifact_name
+
+
 def get_checkpoint_dir_for_run(run_id):
     """
     Get checkpoint directory for a specific run ID.

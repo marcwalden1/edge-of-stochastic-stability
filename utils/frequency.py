@@ -358,6 +358,10 @@ class FrequencyCalculator:
             freq = _rare_scale(ctx, freq, heavy=True)
             return ctx.step_number % freq == 0
 
+        def trajectory_tracking_rule(ctx: MeasurementContext) -> bool:
+            """Trajectory tracking: save projected weights every 128 steps."""
+            return ctx.step_number % 128 == 0
+        
         def proj_eigens_refresh_rule(ctx: MeasurementContext) -> bool:
             """Refresh cadence for projection eigendirections.
 
@@ -386,7 +390,8 @@ class FrequencyCalculator:
             'gradient_norm_squared': gradient_norm_squared_rule,
             'one_step_loss_change': one_step_loss_change_rule,
             'grad_projection': grad_projection_rule,
-            'proj_eigens_refresh': proj_eigens_refresh_rule
+            'proj_eigens_refresh': proj_eigens_refresh_rule,
+            'trajectory_tracking': trajectory_tracking_rule
         })
     
     def should_measure(self, measurement_type: str, ctx: MeasurementContext) -> bool:

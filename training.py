@@ -74,6 +74,10 @@ class MeasurementRunner:
         gd_noise,
         proj_switch_step,
         quad_approx,
+        track_trajectory=False,
+        projection_seed=888,
+        wandb_run=None,
+        wandb_run_id=None,
     ):
         self.net = net
         self.loss_fn = loss_fn
@@ -92,6 +96,10 @@ class MeasurementRunner:
         self.gd_noise = gd_noise
         self.proj_switch_step = proj_switch_step
         self.quad_approx = quad_approx
+        self.track_trajectory = track_trajectory
+        self.projection_seed = projection_seed
+        self.wandb_run = wandb_run
+        self.wandb_run_id = wandb_run_id
 
         self.eigenvalues_log = []
         if 'lmax' in measurements and num_eigenvalues > 1:
@@ -311,6 +319,20 @@ class MeasurementRunner:
             if frequency_calculator.should_measure('param_distance', ctx):
                 metrics['param_distance'] = calculate_param_distance(self.net, self.param_reference).item()
 
+        # ----- Trajectory tracking: save projected weights -----
+        if 'trajectory_tracking' in self.measurements:
+            if frequency_calculator.should_measure('trajectory_tracking', ctx):
+                if self.track_trajectory:
+                    from utils.wandb_utils import save_projected_weights_wandb
+                    artifact_name = save_projected_weights_wandb(
+                        model=self.net,
+                        step=step_number,
+                        run_id=self.wandb_run_id,
+                        projection_dim=5000,
+                        seed=self.projection_seed,
+                        save_every_n_steps=1  # Frequency controlled by frequency_calculator
+                    )
+
         # ----- Gradient norm squared estimate -----
         if 'gradient_norm' in self.measurements:
             if frequency_calculator.should_measure('gradient_norm_squared', ctx):
@@ -465,6 +487,8 @@ def train(
             wandb_run=None,
             wandb_enabled: bool = False,
             wandb_run_id: str = None,
+            track_trajectory: bool = False,  # If True, save projected weights as wandb artifacts
+            projection_seed: int = 888,  # Seed for projection matrix
             ):
     
     # -------------------------------------
@@ -581,6 +605,10 @@ def train(
         gd_noise=gd_noise,
         proj_switch_step=proj_switch_step,
         quad_approx=quad_approx,
+        track_trajectory=track_trajectory,
+        projection_seed=projection_seed,
+        wandb_run=wandb_run,
+        wandb_run_id=wandb_run_id,
     )
     # ----- Run Identification -----
     run_id = wandb_run_id or generate_run_id()
@@ -977,6 +1005,10 @@ if __name__ == '__main__':
     parser.add_argument('--cont-run-id', '--cont_run_id', type=str, default=None, help='Wandb run ID to continue training from')
     parser.add_argument('--cont-step', '--cont_step', type=int, default=None, help='Step to continue training from (uses closest available checkpoint)')
     parser.add_argument('--checkpoint-every', '--checkpoint_every', type=int, default=None, help='Save checkpoint every N steps (default: auto-calculated based on total steps)')
+    
+    # --- Trajectory Tracking Options ---
+    parser.add_argument('--track-trajectory', action='store_true', help='If set, save projected weights as wandb artifacts for trajectory distance tracking')
+    parser.add_argument('--projection-seed', '--projection_seed', type=int, default=888, help='Random seed for weight projection matrix (default: 888)')
 
     # --- Optimizer Variants ---
     parser.add_argument('--momentum', type=float, default=None, help='Momentum for SGD optimizer')
@@ -1143,6 +1175,7 @@ if __name__ == '__main__':
     ('final', args.final),
     ('param_distance', args.param_distance),
     ('hessian_trace', args.hessian_trace),
+    ('trajectory_tracking', args.track_trajectory),
     ] if enabled}
 
     # ----- Result Storage Setup -----
@@ -1281,4 +1314,6 @@ if __name__ == '__main__':
         wandb_run=wandb_run,
         wandb_enabled=wandb_enabled,
         wandb_run_id=wandb_run_id,
+        track_trajectory=args.track_trajectory,
+        projection_seed=args.projection_seed,
     )
