@@ -42,27 +42,38 @@ def find_offline_run_directory(run_id: str, wandb_dir: Optional[Path] = None) ->
         wandb_dir = Path(os.environ.get("WANDB_DIR", os.environ.get("RESULTS", "~/results")))
     wandb_dir = Path(wandb_dir).expanduser()
     
-    # Look for offline-run directories
-    wandb_base = wandb_dir / "wandb"
-    if not wandb_base.exists():
-        return None
+    # Look for offline-run directories - try both wandb/wandb and just wandb
+    possible_bases = [
+        wandb_dir / "wandb" / "wandb",
+        wandb_dir / "wandb",
+        wandb_dir,
+    ]
     
-    # Search for run directory containing this run_id
-    for run_dir in wandb_base.glob("offline-run-*"):
-        # Check metadata file for run ID
-        meta_path = run_dir / "files" / "wandb-metadata.json"
-        if meta_path.exists():
-            try:
-                with open(meta_path, 'r') as f:
-                    meta = json.load(f)
-                if meta.get("id") == run_id:
-                    return run_dir
-            except (json.JSONDecodeError, KeyError):
-                continue
+    for wandb_base in possible_bases:
+        if not wandb_base.exists():
+            continue
         
-        # Also check if run_id is in directory name
-        if run_id in run_dir.name:
-            return run_dir
+        # First, try to find by run_id in directory name (fastest)
+        for run_dir in wandb_base.glob(f"offline-run-*-{run_id}"):
+            if run_dir.is_dir():
+                return run_dir
+        
+        # Also search all offline-run directories
+        for run_dir in wandb_base.glob("offline-run-*"):
+            # Check metadata file for run ID
+            meta_path = run_dir / "files" / "wandb-metadata.json"
+            if meta_path.exists():
+                try:
+                    with open(meta_path, 'r') as f:
+                        meta = json.load(f)
+                    if meta.get("id") == run_id:
+                        return run_dir
+                except (json.JSONDecodeError, KeyError):
+                    continue
+            
+            # Also check if run_id is in directory name
+            if run_id in run_dir.name:
+                return run_dir
     
     return None
 
@@ -353,7 +364,9 @@ def get_available_steps(run_id: str, project: Optional[str] = None, entity: Opti
     
     try:
         run = api.run(run_path)
-        artifacts = run.logged_artifacts()
+        print(f"  Successfully accessed run via API: {run_path}", file=sys.stderr)
+        artifacts = list(run.logged_artifacts())
+        print(f"  Found {len(artifacts)} total artifacts", file=sys.stderr)
         
         steps = []
         for artifact in artifacts:
@@ -370,10 +383,12 @@ def get_available_steps(run_id: str, project: Optional[str] = None, entity: Opti
                 except ValueError:
                     continue
         
+        print(f"  Found {len(steps)} projected_weights artifacts", file=sys.stderr)
         if steps:
             return sorted(steps)
     except Exception as e:
         # API failed, fall back to filesystem search
+        print(f"  API access failed: {e}", file=sys.stderr)
         pass
     
     # Fall back to filesystem search if API didn't work
@@ -388,12 +403,18 @@ def get_available_steps(run_id: str, project: Optional[str] = None, entity: Opti
             offline_run_dir / "files",
         ]
         
+        print(f"  Searching for artifacts in offline run directory: {offline_run_dir}", file=sys.stderr)
         for artifacts_base in artifact_dirs:
             if not artifacts_base.exists():
+                print(f"    {artifacts_base} does not exist", file=sys.stderr)
                 continue
             
+            print(f"    Searching in {artifacts_base}", file=sys.stderr)
             # Search recursively for artifact directories
-            for artifact_dir in artifacts_base.rglob("projected_weights_step_*"):
+            found_dirs = list(artifacts_base.rglob("projected_weights_step_*"))
+            print(f"    Found {len(found_dirs)} potential artifact directories", file=sys.stderr)
+            
+            for artifact_dir in found_dirs:
                 if artifact_dir.is_dir():
                     # Extract step number
                     step_str = artifact_dir.name.replace("projected_weights_step_", "")
@@ -408,10 +429,27 @@ def get_available_steps(run_id: str, project: Optional[str] = None, entity: Opti
                     except ValueError:
                         continue
         
+        if steps:
+            print(f"  Found {len(steps)} steps via filesystem search", file=sys.stderr)
+        else:
+            print(f"  No steps found in filesystem. Listing contents of {offline_run_dir}:", file=sys.stderr)
+            if offline_run_dir.exists():
+                for item in list(offline_run_dir.iterdir())[:10]:
+                    print(f"    {item.name} ({'dir' if item.is_dir() else 'file'})", file=sys.stderr)
+            
+            # Check if .wandb file exists - artifacts might be stored there
+            wandb_file = offline_run_dir / f"run-{run_id}.wandb"
+            if wandb_file.exists():
+                print(f"  Found .wandb file: {wandb_file} (size: {wandb_file.stat().st_size / 1024 / 1024:.1f} MB)", file=sys.stderr)
+                print(f"  Artifacts are stored in the .wandb file. You may need to sync the run first:", file=sys.stderr)
+                print(f"    cd {offline_run_dir} && wandb sync .", file=sys.stderr)
+        
         return sorted(steps)
     
     # If both API and filesystem failed, return empty list
     print(f"Warning: Could not find artifacts for run {run_id} via API or filesystem", file=sys.stderr)
+    if not offline_run_dir:
+        print(f"  Offline run directory not found for run_id {run_id}", file=sys.stderr)
     return []
 
 

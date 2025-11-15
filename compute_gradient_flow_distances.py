@@ -212,7 +212,7 @@ def find_sharpness_crossing_time(
         run = api.run(run_path)
         
         # Get batch_sharpness from run history
-        history = run.history()
+        history = run.history(samples=None)
         
         if 'batch_sharpness' not in history.columns:
             return None
