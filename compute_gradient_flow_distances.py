@@ -12,6 +12,7 @@ Where t = step_gf * 0.001 = step_gd * η
 
 import os
 import sys
+import json
 import argparse
 import tempfile
 from pathlib import Path
@@ -164,84 +165,230 @@ def compute_gradient_flow_distances(
 def find_sharpness_crossing_time(
     run_id: str,
     lr: float,
-    results_root: Optional[Path] = None
+    results_root: Optional[Path] = None,
+    wandb_dir: Optional[Path] = None,
+    project: Optional[str] = None,
+    entity: Optional[str] = None
 ) -> Optional[float]:
     """
-    Find the time when sharpness first crosses 2/η.
+    Find the time when batch_sharpness first crosses 2/η.
+    Loads from wandb run history.
     
+    Parameters:
+    -----------
+    run_id : str
+        Wandb run ID
+    lr : float
+        Learning rate for this run
+    results_root : Path, optional
+        (Not used, kept for compatibility)
+    wandb_dir : Path, optional
+        (Not used, kept for compatibility)
+    project : str, optional
+        Wandb project name
+    entity : str, optional
+        Wandb entity
+        
     Returns:
     --------
     float or None
         Time when sharpness crosses 2/η, or None if not found
     """
-    if results_root is None:
-        results_root = Path(os.environ.get('RESULTS', '~/results')) / 'plaintext' / 'cifar10_mlp'
+    if not WANDB_AVAILABLE:
+        return None
     
-    results_root = Path(results_root).expanduser()
+    if project is None:
+        project = os.environ.get("WANDB_PROJECT", "eoss2")
     
     threshold = 2.0 / lr
     
-    # Search for results.txt files
-    for folder in sorted(results_root.glob('*/')):
-        results_file = folder / 'results.txt'
-        if not results_file.exists():
-            continue
+    try:
+        api = wandb.Api()
+        if entity:
+            run_path = f"{entity}/{project}/{run_id}"
+        else:
+            run_path = f"{project}/{run_id}"
         
-        try:
-            df = pd.read_csv(
-                results_file,
-                skiprows=4,
-                sep=',',
-                header=None,
-                names=['epoch', 'step', 'batch_loss', 'full_loss', 'lambda_max',
-                       'step_sharpness', 'batch_sharpness', 'gni', 'total_accuracy'],
-                na_values=['nan'],
-                skipinitialspace=True
-            )
-            
-            # Find first step where lambda_max > threshold
-            crossing = df[df['lambda_max'] > threshold]
-            if len(crossing) > 0:
-                first_crossing_step = crossing.iloc[0]['step']
-                crossing_time = first_crossing_step * lr
-                return float(crossing_time)
-        except Exception as e:
-            continue
+        run = api.run(run_path)
+        
+        # Get batch_sharpness from run history
+        history = run.history()
+        
+        if 'batch_sharpness' not in history.columns:
+            return None
+        
+        # Get step column
+        step_col = '_step' if '_step' in history.columns else 'step'
+        if step_col not in history.columns:
+            return None
+        
+        # Find first step where batch_sharpness > threshold
+        batch_sharp = history[[step_col, 'batch_sharpness']].dropna()
+        if len(batch_sharp) == 0:
+            return None
+        
+        crossing = batch_sharp[batch_sharp['batch_sharpness'] > threshold]
+        if len(crossing) > 0:
+            first_crossing_step = crossing.iloc[0][step_col]
+            crossing_time = first_crossing_step * lr
+            return float(crossing_time)
+    except Exception as e:
+        print(f"Error finding sharpness crossing time for run {run_id}: {e}", file=sys.stderr)
     
     return None
+
+
+def load_lambda_max_data(
+    run_id: str,
+    lr: float,
+    results_root: Optional[Path] = None,
+    wandb_dir: Optional[Path] = None,
+    project: Optional[str] = None,
+    entity: Optional[str] = None
+) -> Optional[pd.DataFrame]:
+    """
+    Load lambda_max values from wandb run history.
+    
+    Returns DataFrame with columns: step, lambda_max, time (where time = step * lr)
+    """
+    if not WANDB_AVAILABLE:
+        return None
+    
+    if project is None:
+        project = os.environ.get("WANDB_PROJECT", "eoss2")
+    
+    try:
+        api = wandb.Api()
+        if entity:
+            run_path = f"{entity}/{project}/{run_id}"
+        else:
+            run_path = f"{project}/{run_id}"
+        
+        print(f"  Loading lambda_max for run {run_id} from {run_path}...", file=sys.stderr)
+        run = api.run(run_path)
+        
+        # Try scan_history first (more reliable for large runs)
+        # scan_history() returns an iterator, so we need to consume it fully
+        try:
+            print(f"  Trying scan_history()...", file=sys.stderr)
+            history_iter = run.scan_history()
+            history_list = list(history_iter)  # Consume the iterator
+            history_df = pd.DataFrame(history_list)
+            print(f"  scan_history() loaded {len(history_df)} rows", file=sys.stderr)
+        except Exception as e:
+            print(f"  scan_history() failed: {e}, trying history(samples=None)...", file=sys.stderr)
+            # Use samples=None to get all history, not just the default 500
+            history_df = run.history(samples=None)
+            print(f"  history() loaded {len(history_df)} rows", file=sys.stderr)
+        
+        print(f"  Available columns: {list(history_df.columns)}", file=sys.stderr)
+        
+        # Try different possible column names for lambda_max
+        lambda_col = None
+        for col_name in ['lambda_max', 'lambda-max', 'lambdaMax', 'λ_max']:
+            if col_name in history_df.columns:
+                lambda_col = col_name
+                break
+        
+        if lambda_col is None:
+            print(f"  lambda_max not found in wandb history for run {run_id}", file=sys.stderr)
+            print(f"  Available columns: {list(history_df.columns)}", file=sys.stderr)
+            return None
+        
+        # Get step column (might be '_step' or 'step')
+        step_col = '_step' if '_step' in history_df.columns else 'step'
+        if step_col not in history_df.columns:
+            print(f"  Step column not found in wandb history for run {run_id}", file=sys.stderr)
+            print(f"  Available columns: {list(history_df.columns)}", file=sys.stderr)
+            return None
+        
+        # Extract step and lambda_max
+        lambda_max_data = history_df[[step_col, lambda_col]].dropna()
+        
+        if len(lambda_max_data) == 0:
+            print(f"  No lambda_max data found for run {run_id} (all NaN)", file=sys.stderr)
+            return None
+        
+        # Rename columns
+        lambda_max_data = lambda_max_data.rename(columns={step_col: 'step', lambda_col: 'lambda_max'})
+        
+        # Convert GD step to time using the GD learning rate
+        lambda_max_data = lambda_max_data.copy()
+        lambda_max_data['time'] = lambda_max_data['step'] * lr
+        
+        print(f"  Loaded {len(lambda_max_data)} lambda_max measurements from wandb", file=sys.stderr)
+        return lambda_max_data[['step', 'lambda_max', 'time']]
+    except Exception as e:
+        import traceback
+        print(f"Error loading lambda_max from wandb for run {run_id}: {e}", file=sys.stderr)
+        print(f"  Traceback: {traceback.format_exc()}", file=sys.stderr)
+        return None
 
 
 def plot_gradient_flow_distances(
     results: Dict[float, pd.DataFrame],
     crossing_times: Dict[float, float],
+    lambda_max_data: Optional[Dict[float, pd.DataFrame]] = None,
     output_path: Optional[Path] = None
 ):
     """
-    Plot distances for all step sizes on one graph, with vertical lines at crossing times.
+    Plot distances (top) and lambda_max (bottom) for all step sizes.
     """
-    fig, ax = plt.subplots(figsize=(12, 8))
+    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(12, 10), sharex=True)
     
     colors = plt.cm.tab10(np.linspace(0, 1, len(results)))
     
+    # Top plot: Weight distance
     for i, (lr, df) in enumerate(sorted(results.items())):
         label = f'η = {lr:.5f}'.rstrip('0').rstrip('.')
-        ax.plot(df['time'], df['distance'], 
+        ax1.plot(df['time'], df['distance'], 
                'o-', linewidth=2, markersize=3, color=colors[i], alpha=0.7,
                label=label)
         
         # Add vertical line at crossing time
         if lr in crossing_times and crossing_times[lr] is not None:
             crossing_time = crossing_times[lr]
-            ax.axvline(x=crossing_time, color=colors[i], linestyle='--', 
+            ax1.axvline(x=crossing_time, color=colors[i], linestyle='--', 
                       linewidth=1.5, alpha=0.5)
     
-    ax.set_xlabel('Time (step * η)', fontsize=14)
-    ax.set_ylabel('L2 Distance from Gradient Flow', fontsize=14)
-    ax.set_title('Distance from Gradient Flow vs Time\n(Figure 29 analogue)', 
+    ax1.set_ylabel('L2 Distance from Gradient Flow', fontsize=14)
+    ax1.set_title('Distance from Gradient Flow vs Time\n(Figure 29 analogue)', 
                  fontsize=16, fontweight='bold')
-    ax.legend(fontsize=11, loc='upper left')
-    ax.grid(True, alpha=0.3)
-    ax.set_yscale('log')  # Log scale for better visualization
+    ax1.legend(fontsize=11, loc='upper left')
+    ax1.grid(True, alpha=0.3)
+    ax1.set_yscale('log')  # Log scale for better visualization
+    
+    # Bottom plot: Lambda_max
+    if lambda_max_data:
+        print(f"Plotting lambda_max for {len(lambda_max_data)} runs...")
+        for i, (lr, df) in enumerate(sorted(results.items())):
+            print(f"  Checking lr={lr} in lambda_max_data: {lr in lambda_max_data}")
+            if lr in lambda_max_data and lambda_max_data[lr] is not None:
+                lambda_df = lambda_max_data[lr]
+                print(f"  Plotting lambda_max for lr={lr}, {len(lambda_df)} points")
+                label = f'η = {lr:.5f}'.rstrip('0').rstrip('.')
+                ax2.plot(lambda_df['time'], lambda_df['lambda_max'],
+                        '-', linewidth=2, color=colors[i], alpha=0.7, label=label)
+                
+                # Add horizontal line at 2/η threshold
+                threshold = 2.0 / lr
+                ax2.axhline(y=threshold, color=colors[i], linestyle=':', 
+                          linewidth=1, alpha=0.5)
+                
+                # Add vertical line at crossing time
+                if lr in crossing_times and crossing_times[lr] is not None:
+                    crossing_time = crossing_times[lr]
+                    ax2.axvline(x=crossing_time, color=colors[i], linestyle='--', 
+                              linewidth=1.5, alpha=0.5)
+            else:
+                print(f"  Skipping lr={lr}: not in lambda_max_data or is None")
+    else:
+        print("Warning: lambda_max_data is empty, skipping lambda_max plot")
+    
+    ax2.set_xlabel('Time (step * η_GF)', fontsize=14)
+    ax2.set_ylabel('λ_max', fontsize=14)
+    ax2.legend(fontsize=11, loc='upper left')
+    ax2.grid(True, alpha=0.3)
     
     plt.tight_layout()
     
@@ -281,12 +428,13 @@ def main():
         print("Error: wandb is required", file=sys.stderr)
         return 1
     
-    # Expected learning rates
-    expected_lrs = [0.02, 0.01, 0.00666666, 0.005]
+    # Expected learning rates (excluding lr=0.02 which failed)
+    expected_lrs = [0.01, 0.00666666, 0.005]
     
     if len(args.gd_runs) != len(expected_lrs):
         print(f"Error: Expected {len(expected_lrs)} GD run IDs, got {len(args.gd_runs)}", 
               file=sys.stderr)
+        print(f"Expected learning rates: {expected_lrs}", file=sys.stderr)
         return 1
     
     gd_run_ids = {lr: run_id for lr, run_id in zip(expected_lrs, args.gd_runs)}
@@ -320,13 +468,30 @@ def main():
     for lr in expected_lrs:
         if lr in gd_run_ids:
             crossing_time = find_sharpness_crossing_time(
-                gd_run_ids[lr], lr, results_root
+                gd_run_ids[lr], lr, results_root, wandb_dir, args.project, args.entity
             )
             crossing_times[lr] = crossing_time
             if crossing_time:
                 print(f"lr={lr}: crossing time = {crossing_time:.4f}")
             else:
                 print(f"lr={lr}: crossing time not found")
+    
+    # Load lambda_max data for each GD run
+    print("\nLoading lambda_max data from wandb...")
+    lambda_max_data = {}
+    for lr in expected_lrs:
+        if lr in gd_run_ids:
+            print(f"\nLoading lambda_max for lr={lr}, run_id={gd_run_ids[lr]}...")
+            lambda_df = load_lambda_max_data(
+                gd_run_ids[lr], lr, results_root, wandb_dir, args.project, args.entity
+            )
+            if lambda_df is not None:
+                lambda_max_data[lr] = lambda_df
+                print(f"lr={lr}: loaded {len(lambda_df)} lambda_max measurements")
+            else:
+                print(f"lr={lr}: could not load lambda_max data")
+    
+    print(f"\nSuccessfully loaded lambda_max for {len(lambda_max_data)} runs")
     
     # Plot
     if args.output:
@@ -335,7 +500,7 @@ def main():
         output_dir = Path(__file__).parent / 'visualization' / 'img'
         output_path = output_dir / 'gradient_flow_distances_figure29.png'
     
-    plot_gradient_flow_distances(results, crossing_times, output_path)
+    plot_gradient_flow_distances(results, crossing_times, lambda_max_data, output_path)
     
     # Save data
     csv_path = output_path.with_suffix('.csv')
