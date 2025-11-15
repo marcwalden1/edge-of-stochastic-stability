@@ -13,6 +13,7 @@ from pathlib import Path
 from typing import Any, Dict, List
 
 import pandas as pd
+import argparse
 
 
 def _parse_batch_and_lr_from_folder(folder_name: str) -> tuple[int | None, float | None]:
@@ -122,6 +123,14 @@ def calculate_plateau_values(results_root: Path) -> List[Dict[str, Any]]:
 
 
 def main() -> int:
+    parser = argparse.ArgumentParser(description="Compute plateau values from results.")
+    parser.add_argument(
+        "--subdir",
+        default="plaintext/cifar10_cnn",
+        help='Relative subdir under RESULTS (e.g., "plaintext/cifar10_cnn" or "plaintext/cifar10_mlp")',
+    )
+    args = parser.parse_args()
+
     # Resolve RESULTS directory and default to ~/results
     results_base = os.environ.get('RESULTS')
     if results_base:
@@ -129,12 +138,12 @@ def main() -> int:
     else:
         base = Path(os.path.expanduser('~/results'))
 
-    # Expected structure: RESULTS/plaintext/cifar10_mlp/<timestamp>_lrXXXX_bYYYY
-    results_root = base / 'plaintext' / 'cifar10_mlp'
+    # Expected structure: RESULTS/<subdir>/<timestamp>_lrXXXX_bYYYY
+    results_root = base / Path(args.subdir)
 
     if not results_root.exists():
         print(f"Error: Results directory not found: {results_root}")
-        print("Set RESULTS env var or ensure ~/results/plaintext/cifar10_mlp exists")
+        print("Set RESULTS env var or pass --subdir (e.g., plaintext/cifar10_cnn)")
         return 1
 
     print(f"Analyzing results in: {results_root}")
