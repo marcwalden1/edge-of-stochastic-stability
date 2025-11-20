@@ -5,7 +5,7 @@ This module provides a configurable system for determining when to perform
 various measurements during training, replacing the scattered 'how_often' logic.
 """
 
-from typing import Dict, Callable, Any
+from typing import Dict, Callable
 from dataclasses import dataclass
 
 
@@ -359,8 +359,13 @@ class FrequencyCalculator:
             return ctx.step_number % freq == 0
 
         def trajectory_tracking_rule(ctx: MeasurementContext) -> bool:
-            """Trajectory tracking: save projected weights every 128 steps."""
-            return ctx.step_number % 128 == 0
+            """Trajectory tracking cadence.
+
+            Save baseline snapshot at step 0, then every 256 steps thereafter.
+            (Increasing interval from 128 to 256 reduces overhead.)
+            """
+            s = ctx.step_number
+            return s == 0 or (s % 256 == 0)
         
         def proj_eigens_refresh_rule(ctx: MeasurementContext) -> bool:
             """Refresh cadence for projection eigendirections.

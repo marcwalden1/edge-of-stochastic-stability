@@ -16,7 +16,6 @@ except ImportError:  # pragma: no cover - exercised when wandb missing
     WANDB_AVAILABLE = False
 
 
-from utils.naming import sanitize_run_name_part as _sanitize_run_name_part
 from utils.naming import compose_run_name as _compose_run_name
 
 
@@ -57,6 +56,12 @@ def init_wandb(args, step_to_start):
     """
     if not WANDB_AVAILABLE:
         raise RuntimeError("wandb is not available; call init_wandb only when enabled.")
+
+    # If WANDB_DIR isn't set, default it to RESULTS so artifacts live under results/wandb
+    if 'WANDB_DIR' not in os.environ:
+        results_dir = os.environ.get('RESULTS')
+        if results_dir:
+            os.environ['WANDB_DIR'] = results_dir
 
     # Create a name for the run based on dataset, model, batch size, and learning rate
     run_name = _compose_run_name(args)
@@ -461,8 +466,18 @@ def save_projected_weights_wandb(
         
         # Log artifact to wandb
         run.log_artifact(artifact)
-        
-        print(f"Saved projected weights artifact: {artifact_name} (step {step})")
+
+        # Persist explicit local copy for offline inspection
+        wandb_dir = Path(os.environ.get('WANDB_DIR', '.')).expanduser()
+        local_root = wandb_dir / 'wandb' / 'local_projected_weights'
+        local_root.mkdir(parents=True, exist_ok=True)
+        local_artifact_dir = local_root / artifact_name
+        local_artifact_dir.mkdir(exist_ok=True)
+        np.save(local_artifact_dir / 'projected_weights.npy', projected_weights)
+        with open(local_artifact_dir / 'metadata.json', 'w') as f_local:
+            json.dump(metadata, f_local, indent=2)
+
+        print(f"Saved projected weights artifact: {artifact_name} (step {step}) | local copy: {local_artifact_dir}")
         
         return artifact_name
 
