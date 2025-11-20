@@ -467,17 +467,31 @@ def save_projected_weights_wandb(
         # Log artifact to wandb
         run.log_artifact(artifact)
 
-        # Persist explicit local copy for offline inspection
-        wandb_dir = Path(os.environ.get('WANDB_DIR', '.')).expanduser()
-        local_root = wandb_dir / 'wandb' / 'local_projected_weights'
-        local_root.mkdir(parents=True, exist_ok=True)
-        local_artifact_dir = local_root / artifact_name
+        # Persist per-run local copy so offline distance script works without modifications.
+        # compute_trajectory_distance.py searches offline run dir under 'artifacts/projected_weights_step_*'.
+        run_dir = Path(run.dir).resolve() if hasattr(run, 'dir') else Path(os.environ.get('WANDB_DIR', '.'))
+        per_run_artifacts_root = run_dir / 'artifacts'
+        per_run_artifacts_root.mkdir(parents=True, exist_ok=True)
+        local_artifact_dir = per_run_artifacts_root / artifact_name
         local_artifact_dir.mkdir(exist_ok=True)
         np.save(local_artifact_dir / 'projected_weights.npy', projected_weights)
         with open(local_artifact_dir / 'metadata.json', 'w') as f_local:
             json.dump(metadata, f_local, indent=2)
 
-        print(f"Saved projected weights artifact: {artifact_name} (step {step}) | local copy: {local_artifact_dir}")
+        # (Optional) backward-compatible global directory symlink for manual browsing
+        wandb_dir = Path(os.environ.get('WANDB_DIR', '.')).expanduser()
+        global_root = wandb_dir / 'wandb' / 'local_projected_weights'
+        try:
+            if not global_root.exists():
+                global_root.mkdir(parents=True, exist_ok=True)
+            # create a symlink pointing to per-run location (ignore errors if FS disallows)
+            link_path = global_root / artifact_name
+            if not link_path.exists():
+                link_path.symlink_to(local_artifact_dir)
+        except Exception:
+            pass
+
+        print(f"Saved projected weights artifact: {artifact_name} (step {step}) | per-run copy: {local_artifact_dir}")
         
         return artifact_name
 
