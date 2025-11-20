@@ -10,7 +10,7 @@ import json
 import argparse
 import tempfile
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional
 import numpy as np
 import pandas as pd
 
@@ -146,7 +146,7 @@ def load_projected_weights_from_artifacts(
                 if weights_path.exists():
                     projected_weights = np.load(weights_path)
                     return projected_weights
-    except Exception as api_error:
+    except Exception:
         # API failed, fall back to filesystem search
         pass
     
@@ -211,6 +211,17 @@ def load_projected_weights_from_artifacts(
                     os.chdir(original_dir)
         
         print(f"Artifact {artifact_name} not found in offline run directory {offline_run_dir}", file=sys.stderr)
+        # Global fallback: check WANDB_DIR/wandb/local_projected_weights/<run_id>/<artifact_name>
+        global_root = wandb_dir / 'wandb' / 'local_projected_weights' / run_id
+        global_artifact_dir = global_root / artifact_name
+        weights_file = global_artifact_dir / 'projected_weights.npy'
+        if weights_file.exists():
+            try:
+                projected_weights = np.load(weights_file)
+                print(f"Loaded artifact via global fallback: {weights_file}", file=sys.stderr)
+                return projected_weights
+            except Exception:
+                print(f"Error loading global fallback {weights_file}", file=sys.stderr)
         print(f"  Searched in: {offline_run_dir}", file=sys.stderr)
         # List what's actually there for debugging
         if (offline_run_dir / "artifacts").exists():
@@ -220,6 +231,17 @@ def load_projected_weights_from_artifacts(
     
     # If both API and filesystem failed, return None
     print(f"Warning: Could not load artifact {artifact_name} for run {run_id} via API or filesystem", file=sys.stderr)
+    # Final global fallback (if offline_run_dir was None)
+    global_root = wandb_dir / 'wandb' / 'local_projected_weights' / run_id
+    global_artifact_dir = global_root / artifact_name
+    weights_file = global_artifact_dir / 'projected_weights.npy'
+    if weights_file.exists():
+        try:
+            projected_weights = np.load(weights_file)
+            print(f"Loaded artifact via global fallback (no offline run dir): {weights_file}", file=sys.stderr)
+            return projected_weights
+        except Exception:
+            print(f"Error loading global fallback {weights_file}", file=sys.stderr)
     return None
 
 
@@ -441,10 +463,27 @@ def get_available_steps(run_id: str, project: Optional[str] = None, entity: Opti
             wandb_file = offline_run_dir / f"run-{run_id}.wandb"
             if wandb_file.exists():
                 print(f"  Found .wandb file: {wandb_file} (size: {wandb_file.stat().st_size / 1024 / 1024:.1f} MB)", file=sys.stderr)
-                print(f"  Artifacts are stored in the .wandb file. You may need to sync the run first:", file=sys.stderr)
+                print("  Artifacts are stored in the .wandb file. You may need to sync the run first:", file=sys.stderr)
                 print(f"    cd {offline_run_dir} && wandb sync .", file=sys.stderr)
         
-        return sorted(steps)
+        if steps:
+            return sorted(steps)
+    # Global fallback search: WANDB_DIR/wandb/local_projected_weights/<run_id>
+    global_root = wandb_dir / 'wandb' / 'local_projected_weights' / run_id
+    if global_root.exists():
+        steps = []
+        for artifact_dir in global_root.glob('projected_weights_step_*'):
+            if artifact_dir.is_dir():
+                step_str = artifact_dir.name.replace('projected_weights_step_', '').split(':')[0]
+                try:
+                    step = int(step_str)
+                    weights_file = artifact_dir / 'projected_weights.npy'
+                    if weights_file.exists():
+                        steps.append(step)
+                except ValueError:
+                    continue
+        if steps:
+            return sorted(steps)
     
     # If both API and filesystem failed, return empty list
     print(f"Warning: Could not find artifacts for run {run_id} via API or filesystem", file=sys.stderr)
@@ -637,7 +676,6 @@ def load_lambda_max_from_results(run_id: str, results_root: Optional[Path] = Non
         results_file = folder / 'results.txt'
         if not results_file.exists():
             continue
-        
         try:
             df = pd.read_csv(
                 results_file,
@@ -649,11 +687,9 @@ def load_lambda_max_from_results(run_id: str, results_root: Optional[Path] = Non
                 na_values=['nan'],
                 skipinitialspace=True
             )
-            
             # Return first match for now (in practice, might need better matching)
             return df[['step', 'lambda_max']].copy()
-            
-        except Exception as e:
+        except Exception:
             continue
     
     raise FileNotFoundError(f"Could not find results.txt for run {run_id}")
@@ -737,7 +773,7 @@ def main():
             'step': steps,
             'weight_distance': [distances[s] for s in steps]
         })
-        step_col_for_merge = 'step'
+    # step_col_for_merge retained from earlier logic but not needed further; removed to silence lint.
     
     # Try to load lambda_max for both runs
     try:

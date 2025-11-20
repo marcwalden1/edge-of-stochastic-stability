@@ -468,9 +468,16 @@ def save_projected_weights_wandb(
         run.log_artifact(artifact)
 
         # Persist per-run local copy so offline distance script works without modifications.
-        # compute_trajectory_distance.py searches offline run dir under 'artifacts/projected_weights_step_*'.
-        run_dir = Path(run.dir).resolve() if hasattr(run, 'dir') else Path(os.environ.get('WANDB_DIR', '.'))
-        per_run_artifacts_root = run_dir / 'artifacts'
+        # compute_trajectory_distance.py searches offline run dir under 'artifacts/projected_weights_step_*'
+        # or 'files/artifacts/projected_weights_step_*'. WandB offline often sets run.dir => offline-run-*/files.
+        run_dir_candidate = Path(run.dir).resolve() if hasattr(run, 'dir') else Path(os.environ.get('WANDB_DIR', '.'))
+        # If run_dir_candidate ends with 'files' and parent looks like offline-run-*, use parent as offline root.
+        if run_dir_candidate.name == 'files' and run_dir_candidate.parent.name.startswith('offline-run-'):
+            offline_run_root = run_dir_candidate.parent
+        else:
+            offline_run_root = run_dir_candidate
+        # Prefer top-level offline_run_root/artifacts for clarity.
+        per_run_artifacts_root = offline_run_root / 'artifacts'
         per_run_artifacts_root.mkdir(parents=True, exist_ok=True)
         local_artifact_dir = per_run_artifacts_root / artifact_name
         local_artifact_dir.mkdir(exist_ok=True)
@@ -478,20 +485,20 @@ def save_projected_weights_wandb(
         with open(local_artifact_dir / 'metadata.json', 'w') as f_local:
             json.dump(metadata, f_local, indent=2)
 
-        # (Optional) backward-compatible global directory symlink for manual browsing
+        # Backward-compatible global directory WITH run_id subfolder to avoid collisions.
         wandb_dir = Path(os.environ.get('WANDB_DIR', '.')).expanduser()
-        global_root = wandb_dir / 'wandb' / 'local_projected_weights'
+        global_root = wandb_dir / 'wandb' / 'local_projected_weights' / run_id
         try:
-            if not global_root.exists():
-                global_root.mkdir(parents=True, exist_ok=True)
-            # create a symlink pointing to per-run location (ignore errors if FS disallows)
+            global_root.mkdir(parents=True, exist_ok=True)
             link_path = global_root / artifact_name
             if not link_path.exists():
                 link_path.symlink_to(local_artifact_dir)
         except Exception:
             pass
 
-        print(f"Saved projected weights artifact: {artifact_name} (step {step}) | per-run copy: {local_artifact_dir}")
+        print(
+            f"Saved projected weights artifact: {artifact_name} (step {step}) | per-run copy: {local_artifact_dir} | offline_run_root: {offline_run_root}"
+        )
         
         return artifact_name
 
