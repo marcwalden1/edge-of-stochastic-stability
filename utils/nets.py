@@ -2,11 +2,11 @@ import torch as T
 import torch
 import torch.nn as nn
 
-from utils.resnet_new import resnet14, resnet20, ResNet
+from utils.resnet_new import resnet14, ResNet
 from utils.resnet_bn import resnet10 as resnet10_bn, ResNet as ResNetBN
 import torch.nn.functional as F
 
-from einops import rearrange, repeat
+from einops import rearrange
 
 from utils.data import get_dataset_presets
 from typing import Union
@@ -50,7 +50,8 @@ def get_model_presets():
             'type': 'mlp',
             'params': {
                 'hidden_dim': 512,
-                'n_layers': 2
+                'n_layers': 2,
+                'activation': 'relu'
             }
         },
         'mlp2': {
@@ -85,6 +86,7 @@ def get_model_presets():
             'type': 'cnn',
             'params': {
                 'hidden_dim': 512,
+                'activation': 'relu'
             }
         },
         'resnet': {
@@ -154,7 +156,7 @@ class SquaredLoss(nn.modules.loss._Loss):
             loss_per_sample = total_L2
 
         
-        if not reduction is None:
+        if reduction is not None:
             if reduction == 'none':
                 return loss_per_sample
 
@@ -174,7 +176,7 @@ class SquaredLoss(nn.modules.loss._Loss):
 
 
 class MLP(nn.Module):
-    def __init__(self, input_dim, hidden_dim, n_layers, output_dim):
+    def __init__(self, input_dim, hidden_dim, n_layers, output_dim, activation: str = 'relu'):
         super(MLP, self).__init__()
 
         self.input_dim = input_dim
@@ -183,6 +185,7 @@ class MLP(nn.Module):
         self.output_dim = output_dim
 
         self.layers = nn.ModuleList()
+        self.activation = activation
 
         self.layers.append(nn.Linear(input_dim, hidden_dim))
         for _ in range(n_layers-1):
@@ -192,7 +195,13 @@ class MLP(nn.Module):
     def forward(self, x):
         x = x.flatten(1)
         for layer in self.layers[:-1]:
-            x = F.relu(layer(x))
+            x = layer(x)
+            if self.activation == 'relu':
+                x = F.relu(x)
+            elif self.activation == 'silu':
+                x = F.silu(x)
+            else:
+                raise ValueError(f"Unsupported activation: {self.activation}")
         x = self.layers[-1](x)
         return x
 
@@ -201,27 +210,31 @@ class MLP(nn.Module):
 
 
 class CNN(nn.Module):
-    def __init__(self, fc_hidden_dim, output_dim):
+    def __init__(self, fc_hidden_dim, output_dim, activation: str = 'relu'):
         super(CNN, self).__init__()
         self.fc_hidden_dim = fc_hidden_dim
+        self.activation = activation
         # self.conv1 = nn.Conv2d(3, 64, 3, 1)
         # self.conv2 = nn.Conv2d(64, 64, 3, 1)
         # self.conv3 = nn.Conv2d(64, 128, 3, 1)
+        act = nn.ReLU() if self.activation == 'relu' else nn.SiLU() if self.activation == 'silu' else None
+        if act is None:
+            raise ValueError(f"Unsupported activation: {self.activation}")
         self.convs = nn.Sequential(
-                nn.Conv2d(3, 64, 3, 1), # 64*30*30
-                nn.ReLU(),
-                nn.Conv2d(64, 64, 3, 1), # 64*28*28
-                nn.ReLU(),
-                nn.MaxPool2d(2, 2), # 64, 14
+            nn.Conv2d(3, 64, 3, 1), # 64*30*30
+            act,
+            nn.Conv2d(64, 64, 3, 1), # 64*28*28
+            act,
+            nn.MaxPool2d(2, 2), # 64, 14
 
-                nn.Conv2d(64, 128, 3, 1), # 128, 12
-                nn.ReLU(),
-                nn.MaxPool2d(2, 2), # 128, 6
+            nn.Conv2d(64, 128, 3, 1), # 128, 12
+            act,
+            nn.MaxPool2d(2, 2), # 128, 6
         )
         self.fcs = nn.Sequential(
-                nn.Linear(128*6*6, fc_hidden_dim, bias=True),
-                nn.ReLU(),
-                nn.Linear(fc_hidden_dim, output_dim, bias=True)
+            nn.Linear(128*6*6, fc_hidden_dim, bias=True),
+            act,
+            nn.Linear(fc_hidden_dim, output_dim, bias=True)
         )
         # self.fc1 = nn.Linear(128*6*6, width, bias=False)
         # self.fc2 = nn.Linear(width, 1, bias=False)
@@ -267,10 +280,10 @@ def prepare_net(model_type: str,
         net = Linear(params['input_dim'], params['hidden_dim'], params['n_layers'], params['output_dim'], params['bias'])
     
     if model_type == 'mlp':
-        net = MLP(params['input_dim'], params['hidden_dim'], params['n_layers'], params['output_dim'])
+        net = MLP(params['input_dim'], params['hidden_dim'], params['n_layers'], params['output_dim'], activation=params.get('activation','relu'))
     
     if model_type == 'cnn':
-        net = CNN(params['hidden_dim'], params['output_dim'])
+        net = CNN(params['hidden_dim'], params['output_dim'], activation=params.get('activation','relu'))
     
     if model_type == 'resnet':
         net = resnet14()

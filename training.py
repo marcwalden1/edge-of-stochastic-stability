@@ -998,6 +998,7 @@ if __name__ == '__main__':
 
     # --- Model Configuration ---
     parser.add_argument('--model', type=str, default='mlp', help='Network architecture to use for training')
+    parser.add_argument('--activation', type=str, default='relu', choices=['relu','silu'], help='Activation function to use in MLP/CNN (relu or silu)')
     parser.add_argument('--init-scale', '--init_scale', type=float, default=0.2, help='Initialization scale for network weights')
     parser.add_argument('--no-init', '--no_init', action='store_true', help='If set, do not initialize network weights')
 
@@ -1201,6 +1202,9 @@ if __name__ == '__main__':
     params = model_presets[name]['params']
     params['input_dim'] = dataset_presets[dataset]['input_dim']
     params['output_dim'] = dataset_presets[dataset]['output_dim']
+    # Pass activation choice into network params if supported
+    if name in ('mlp','cnn'):
+        params['activation'] = args.activation
     net = prepare_net(
         model_type=model_presets[name]['type'], 
         params=params
