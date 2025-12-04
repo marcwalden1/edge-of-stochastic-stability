@@ -83,7 +83,8 @@ def load_projected_weights_from_artifacts(
     step: int,
     project: Optional[str] = None,
     entity: Optional[str] = None,
-    wandb_dir: Optional[Path] = None
+    wandb_dir: Optional[Path] = None,
+    offline: bool = False,
 ) -> Optional[np.ndarray]:
     """
     Load projected weights from wandb artifact for a specific run and step.
@@ -107,48 +108,42 @@ def load_projected_weights_from_artifacts(
     np.ndarray or None
         Projected weight vector, or None if artifact not found
     """
-    if not WANDB_AVAILABLE:
-        raise RuntimeError("wandb is not available; cannot load artifacts.")
+    # We allow offline operation without wandb; only API access requires wandb.
+    # If wandb is missing or offline flag set, we'll skip API access and rely on filesystem.
+    use_api = WANDB_AVAILABLE and (not offline)
     
     # Artifact name format: projected_weights_step_{step:06d}
     artifact_name = f"projected_weights_step_{step:06d}"
     
-    # Try API first (works for synced runs)
-    if project is None:
-        project = os.environ.get("WANDB_PROJECT", "eoss2")
-    
-    api = wandb.Api()
-    
-    if entity:
-        api_run_path = f"{entity}/{project}/{run_id}"
-    else:
-        api_run_path = f"{project}/{run_id}"
-    
-    try:
-        run = api.run(api_run_path)
-        artifacts = run.logged_artifacts()
-        
-        target_artifact = None
-        for artifact in artifacts:
-            # Artifact names may have version suffix (e.g., "projected_weights_step_000000:v0")
-            # Match if the artifact name starts with our target name
-            if artifact.name.startswith(artifact_name + ":") or artifact.name == artifact_name:
-                target_artifact = artifact
-                break
-        
-        if target_artifact is not None:
-            import tempfile
-            with tempfile.TemporaryDirectory() as tmpdir:
-                artifact_dir = target_artifact.download(root=tmpdir)
-                artifact_path = Path(artifact_dir)
-                
-                weights_path = artifact_path / "projected_weights.npy"
-                if weights_path.exists():
-                    projected_weights = np.load(weights_path)
-                    return projected_weights
-    except Exception:
-        # API failed, fall back to filesystem search
-        pass
+    if use_api:
+        # Try API first (works for synced runs)
+        if project is None:
+            project = os.environ.get("WANDB_PROJECT", "eoss2")
+        api = wandb.Api()
+        if entity:
+            api_run_path = f"{entity}/{project}/{run_id}"
+        else:
+            api_run_path = f"{project}/{run_id}"
+        try:
+            run = api.run(api_run_path)
+            artifacts = run.logged_artifacts()
+            target_artifact = None
+            for artifact in artifacts:
+                if artifact.name.startswith(artifact_name + ":") or artifact.name == artifact_name:
+                    target_artifact = artifact
+                    break
+            if target_artifact is not None:
+                import tempfile
+                with tempfile.TemporaryDirectory() as tmpdir:
+                    artifact_dir = target_artifact.download(root=tmpdir)
+                    artifact_path = Path(artifact_dir)
+                    weights_path = artifact_path / "projected_weights.npy"
+                    if weights_path.exists():
+                        projected_weights = np.load(weights_path)
+                        return projected_weights
+        except Exception:
+            # API failed, fall back to filesystem search
+            pass
     
     # Fall back to filesystem search if API didn't work
     if wandb_dir is None:
@@ -250,7 +245,9 @@ def download_all_artifacts_to_cache(
     steps: List[int],
     project: Optional[str] = None,
     entity: Optional[str] = None,
-    cache_dir: Optional[Path] = None
+    cache_dir: Optional[Path] = None,
+    wandb_dir: Optional[Path] = None,
+    offline: bool = False,
 ) -> Dict[int, np.ndarray]:
     """
     Download all artifacts for a run and cache them locally for fast access.
@@ -273,39 +270,41 @@ def download_all_artifacts_to_cache(
     Dict[int, np.ndarray]
         Dictionary mapping step -> projected weights array
     """
-    if not WANDB_AVAILABLE:
-        raise RuntimeError("wandb is not available; cannot download artifacts.")
+    # If wandb isn't available or offline mode, we'll skip API and load via filesystem.
+    use_api = WANDB_AVAILABLE and (not offline)
     
     if cache_dir is None:
         cache_dir = Path.home() / ".cache" / "trajectory_distances" / run_id
     cache_dir.mkdir(parents=True, exist_ok=True)
     
-    if project is None:
-        project = os.environ.get("WANDB_PROJECT", "eoss2")
-    
-    api = wandb.Api()
-    if entity:
-        run_path = f"{entity}/{project}/{run_id}"
-    else:
-        run_path = f"{project}/{run_id}"
-    
-    print(f"Loading artifacts for run {run_id}...")
-    run = api.run(run_path)
-    all_artifacts = list(run.logged_artifacts())
-    
-    # Create a lookup dictionary for artifacts
     artifacts_dict = {}
-    for artifact in all_artifacts:
-        if artifact.type == "projected_weights" and artifact.name.startswith("projected_weights_step_"):
-            # Extract step number
-            step_str = artifact.name.replace("projected_weights_step_", "")
-            if ":" in step_str:
-                step_str = step_str.split(":")[0]
-            try:
-                step = int(step_str)
-                artifacts_dict[step] = artifact
-            except ValueError:
-                continue
+    if use_api:
+        if project is None:
+            project = os.environ.get("WANDB_PROJECT", "eoss2")
+        api = wandb.Api()
+        if entity:
+            run_path = f"{entity}/{project}/{run_id}"
+        else:
+            run_path = f"{project}/{run_id}"
+        print(f"Loading artifacts for run {run_id} via API...")
+        try:
+            run = api.run(run_path)
+            all_artifacts = list(run.logged_artifacts())
+            for artifact in all_artifacts:
+                if artifact.type == "projected_weights" and artifact.name.startswith("projected_weights_step_"):
+                    step_str = artifact.name.replace("projected_weights_step_", "")
+                    if ":" in step_str:
+                        step_str = step_str.split(":")[0]
+                    try:
+                        step = int(step_str)
+                        artifacts_dict[step] = artifact
+                    except ValueError:
+                        continue
+        except Exception:
+            print(f"API access failed for run {run_id}. Falling back to offline filesystem.", file=sys.stderr)
+            use_api = False
+    else:
+        print(f"Offline mode: loading artifacts for run {run_id} from filesystem only.")
     
     cached_weights = {}
     missing_steps = []
@@ -313,36 +312,37 @@ def download_all_artifacts_to_cache(
     for step in steps:
         artifact_name = f"projected_weights_step_{step:06d}"
         cache_file = cache_dir / f"{artifact_name}.npy"
-        
-        # Check cache first
+        # Cache first
         if cache_file.exists():
             try:
                 cached_weights[step] = np.load(cache_file)
                 continue
             except Exception as e:
                 print(f"Warning: Error loading cached file {cache_file}: {e}", file=sys.stderr)
-                # Continue to download
-        
-        # Find and download artifact
-        if step not in artifacts_dict:
-            missing_steps.append(step)
-            continue
-        
-        target_artifact = artifacts_dict[step]
-        try:
-            # Download to temporary directory
-            with tempfile.TemporaryDirectory() as tmpdir:
-                artifact_dir = target_artifact.download(root=tmpdir)
-                weights_path = Path(artifact_dir) / "projected_weights.npy"
-                if weights_path.exists():
-                    weights = np.load(weights_path)
-                    # Cache it for future use
-                    np.save(cache_file, weights)
-                    cached_weights[step] = weights
-                else:
-                    missing_steps.append(step)
-        except Exception as e:
-            print(f"Warning: Error downloading artifact for step {step}: {e}", file=sys.stderr)
+        if use_api and step in artifacts_dict:
+            target_artifact = artifacts_dict[step]
+            try:
+                with tempfile.TemporaryDirectory() as tmpdir:
+                    artifact_dir = target_artifact.download(root=tmpdir)
+                    weights_path = Path(artifact_dir) / "projected_weights.npy"
+                    if weights_path.exists():
+                        weights = np.load(weights_path)
+                        np.save(cache_file, weights)
+                        cached_weights[step] = weights
+                        continue
+            except Exception as e:
+                print(f"Warning: Error downloading artifact for step {step}: {e}", file=sys.stderr)
+        # Offline fallback: load directly from filesystem
+        weights = load_projected_weights_from_artifacts(
+            run_id, step, project=project, entity=entity, wandb_dir=wandb_dir, offline=(not use_api)
+        )
+        if weights is not None:
+            try:
+                np.save(cache_file, weights)
+            except Exception:
+                pass
+            cached_weights[step] = weights
+        else:
             missing_steps.append(step)
     
     if missing_steps:
@@ -352,7 +352,7 @@ def download_all_artifacts_to_cache(
     return cached_weights
 
 
-def get_available_steps(run_id: str, project: Optional[str] = None, entity: Optional[str] = None, wandb_dir: Optional[Path] = None) -> List[int]:
+def get_available_steps(run_id: str, project: Optional[str] = None, entity: Optional[str] = None, wandb_dir: Optional[Path] = None, offline: bool = False) -> List[int]:
     """
     Get list of steps for which projected weights are available.
     Supports both online (via API) and offline (via filesystem) runs.
@@ -362,8 +362,8 @@ def get_available_steps(run_id: str, project: Optional[str] = None, entity: Opti
     List[int]
         Sorted list of step numbers
     """
-    if not WANDB_AVAILABLE:
-        raise RuntimeError("wandb is not available; cannot load artifacts.")
+    # Allow offline mode without wandb; skip API if offline or wandb missing
+    use_api = WANDB_AVAILABLE and (not offline)
     
     # Try offline mode first
     if wandb_dir is None:
@@ -377,41 +377,34 @@ def get_available_steps(run_id: str, project: Optional[str] = None, entity: Opti
     if project is None:
         project = os.environ.get("WANDB_PROJECT", "eoss2")
     
-    api = wandb.Api()
-    
-    if entity:
-        run_path = f"{entity}/{project}/{run_id}"
-    else:
-        run_path = f"{project}/{run_id}"
-    
-    try:
-        run = api.run(run_path)
-        print(f"  Successfully accessed run via API: {run_path}", file=sys.stderr)
-        artifacts = list(run.logged_artifacts())
-        print(f"  Found {len(artifacts)} total artifacts", file=sys.stderr)
-        
-        steps = []
-        for artifact in artifacts:
-            if artifact.type == "projected_weights" and artifact.name.startswith("projected_weights_step_"):
-                # Extract step number from artifact name
-                # Artifact names are like "projected_weights_step_000000:v0"
-                step_str = artifact.name.replace("projected_weights_step_", "")
-                # Remove version suffix (e.g., ":v0")
-                if ":" in step_str:
-                    step_str = step_str.split(":")[0]
-                try:
-                    step = int(step_str)
-                    steps.append(step)
-                except ValueError:
-                    continue
-        
-        print(f"  Found {len(steps)} projected_weights artifacts", file=sys.stderr)
-        if steps:
-            return sorted(steps)
-    except Exception as e:
-        # API failed, fall back to filesystem search
-        print(f"  API access failed: {e}", file=sys.stderr)
-        pass
+    if use_api:
+        api = wandb.Api()
+        if entity:
+            run_path = f"{entity}/{project}/{run_id}"
+        else:
+            run_path = f"{project}/{run_id}"
+        try:
+            run = api.run(run_path)
+            print(f"  Successfully accessed run via API: {run_path}", file=sys.stderr)
+            artifacts = list(run.logged_artifacts())
+            print(f"  Found {len(artifacts)} total artifacts", file=sys.stderr)
+            steps = []
+            for artifact in artifacts:
+                if artifact.type == "projected_weights" and artifact.name.startswith("projected_weights_step_"):
+                    step_str = artifact.name.replace("projected_weights_step_", "")
+                    if ":" in step_str:
+                        step_str = step_str.split(":")[0]
+                    try:
+                        step = int(step_str)
+                        steps.append(step)
+                    except ValueError:
+                        continue
+            print(f"  Found {len(steps)} projected_weights artifacts", file=sys.stderr)
+            if steps:
+                return sorted(steps)
+        except Exception as e:
+            print(f"  API access failed: {e}", file=sys.stderr)
+            use_api = False
     
     # Fall back to filesystem search if API didn't work
     if offline_run_dir:
@@ -504,7 +497,8 @@ def compute_distances(
     save_every_n: int = 10,
     lr1: Optional[float] = None,
     lr2: Optional[float] = None,
-    cache_dir: Optional[Path] = None
+    cache_dir: Optional[Path] = None,
+    offline: bool = False,
 ) -> Dict[int, float]:
     """
     Compute L2 distances between projected weights from two runs.
@@ -542,8 +536,8 @@ def compute_distances(
         Dictionary mapping step_run1 -> L2 distance
     """
     # Get available steps for both runs
-    steps1 = sorted(get_available_steps(run_id1, project, entity, wandb_dir))
-    steps2 = sorted(get_available_steps(run_id2, project, entity, wandb_dir))
+    steps1 = sorted(get_available_steps(run_id1, project, entity, wandb_dir, offline=offline))
+    steps2 = sorted(get_available_steps(run_id2, project, entity, wandb_dir, offline=offline))
     
     # Determine step pairs based on matching strategy
     if lr1 is not None and lr2 is not None:
@@ -582,14 +576,18 @@ def compute_distances(
     steps1_needed = [s1 for s1, s2 in step_pairs]
     weights1_cache = download_all_artifacts_to_cache(
         run_id1, steps1_needed, project, entity,
-        cache_dir / run_id1 if cache_dir else None
+        cache_dir / run_id1 if cache_dir else None,
+        wandb_dir=wandb_dir,
+        offline=offline
     )
     
     print("Downloading and caching artifacts for run2...")
     steps2_needed = [s2 for s1, s2 in step_pairs]
     weights2_cache = download_all_artifacts_to_cache(
         run_id2, steps2_needed, project, entity,
-        cache_dir / run_id2 if cache_dir else None
+        cache_dir / run_id2 if cache_dir else None,
+        wandb_dir=wandb_dir,
+        offline=offline
     )
     
     # Start with existing distances if provided
@@ -709,11 +707,12 @@ def main():
     parser.add_argument('--lr1', type=float, default=None, help='Learning rate for first run (for step*eta matching)')
     parser.add_argument('--lr2', type=float, default=None, help='Learning rate for second run (for step*eta matching)')
     parser.add_argument('--cache-dir', type=str, default=None, help='Directory to cache artifacts (default: ~/.cache/trajectory_distances)')
+    parser.add_argument('--offline', action='store_true', help='Force offline mode: skip wandb API and use filesystem only')
     
     args = parser.parse_args()
     
-    if not WANDB_AVAILABLE:
-        print("Error: wandb is required for this script", file=sys.stderr)
+    if not WANDB_AVAILABLE and not args.offline:
+        print("Error: wandb library not available. Re-run with --offline to use filesystem-only mode.", file=sys.stderr)
         return 1
     
     wandb_dir = Path(args.wandb_dir).expanduser() if args.wandb_dir else None
@@ -751,7 +750,8 @@ def main():
         save_every_n=10,
         lr1=args.lr1,
         lr2=args.lr2,
-        cache_dir=cache_dir
+        cache_dir=cache_dir,
+        offline=args.offline
     )
     
     if not distances:
