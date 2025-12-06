@@ -489,6 +489,7 @@ def train(
             wandb_run_id: str = None,
             track_trajectory: bool = False,  # If True, save projected weights as wandb artifacts
             projection_seed: int = 888,  # Seed for projection matrix
+            momentum_warmup_steps: int = 100,  # If momentum is specified, use momentum=0 for first N steps
             ):
     
     # -------------------------------------
@@ -534,6 +535,36 @@ def train(
 
     # ----- State Initialization -----
     step_number = -1 if step_to_start == 0 else step_to_start
+
+    # ----- Momentum Warmup Setup -----
+    # If momentum is specified and we want warmup, start with momentum=0
+    # When momentum is added, we need to adjust LR to maintain similar effective step size
+    # Effective LR with momentum ≈ lr / (1 - momentum), so we scale LR by (1 - momentum)
+    target_momentum = None
+    original_lr = None
+    warmup_lr = None
+    if momentum_warmup_steps > 0 and isinstance(optimizer, torch.optim.SGD):
+        current_momentum = optimizer.param_groups[0].get('momentum', 0)
+        if current_momentum is not None and current_momentum > 0:
+            target_momentum = current_momentum
+            original_lr = optimizer.param_groups[0]['lr']
+            # During warmup (momentum=0), use higher LR to compensate
+            # After warmup (momentum=m), use LR scaled by (1-m) to maintain effective step size
+            warmup_lr = original_lr / (1 - target_momentum)  # Higher LR during warmup
+            # Set momentum to 0 and adjust LR for warmup period (only if starting from step 0)
+            if step_to_start < momentum_warmup_steps:
+                for param_group in optimizer.param_groups:
+                    param_group['momentum'] = 0
+                    param_group['lr'] = warmup_lr
+                if verbose:
+                    print(f"Momentum warmup: Using momentum=0 and LR={warmup_lr:.6f} for first {momentum_warmup_steps} steps")
+                    print(f"  Then switching to momentum={target_momentum} and LR={original_lr:.6f} (effective step size maintained)")
+            elif step_to_start >= momentum_warmup_steps:
+                # Already past warmup, keep target momentum and scaled LR
+                for param_group in optimizer.param_groups:
+                    param_group['lr'] = original_lr
+                if verbose:
+                    print(f"Momentum warmup: Starting at step {step_to_start} (past warmup), using momentum={target_momentum}, LR={original_lr:.6f}")
 
     if gd_noise is not None:
         grad_storage = GradStorage(net, recalculate_every=30)
@@ -647,6 +678,16 @@ def train(
         # --- Minibatch Iteration ---
         for i in range(0, len(X) // batch_size): # i runs over steps in a epoch
             step_number += 1
+
+            # --- Momentum Warmup: Switch to target momentum at step 100 ---
+            if target_momentum is not None and step_number == momentum_warmup_steps:
+                # Switch from momentum=0 to target momentum and adjust LR
+                # Scale LR by (1 - momentum) to maintain similar effective step size
+                for param_group in optimizer.param_groups:
+                    param_group['momentum'] = target_momentum
+                    param_group['lr'] = original_lr  # Use original LR with momentum
+                if verbose:
+                    print(f"Step {step_number}: Switching from momentum=0 (LR={warmup_lr:.6f}) to momentum={target_momentum} (LR={original_lr:.6f})")
 
             msg = f"{epoch:03d}, {step_number:05d}, "
             # --- Measurement Context and Sampling ---
@@ -1015,6 +1056,10 @@ if __name__ == '__main__':
     parser.add_argument('--momentum', type=float, default=None, help='Momentum for SGD optimizer')
     parser.add_argument('--adam', action='store_true', help='If set, use Adam optimizer instead of SGD')
     parser.add_argument('--nesterov', action='store_true', help='Use Nesterov momentum with SGD (requires --momentum > 0)')
+    parser.add_argument('--momentum-warmup', '--momentum_warmup', action='store_true', 
+                       help='If set, use momentum=0 for first N steps, then switch to target momentum (requires --momentum)')
+    parser.add_argument('--momentum-warmup-steps', '--momentum_warmup_steps', type=int, default=100, 
+                       help='Number of steps to use momentum=0 before switching (only used if --momentum-warmup is set, default: 100)')
     
     # --- Measurement Flags (Primary) ---
     # parser.add_argument('--fullbs', action='store_true', help='If set, compute the lambda_max, aka FullBS')
@@ -1122,6 +1167,10 @@ if __name__ == '__main__':
             raise ValueError("Nesterov is only supported for SGD, not Adam")
         if args.momentum is None or args.momentum <= 0:
             raise ValueError("Nesterov requires --momentum > 0 with SGD")
+    
+    # Momentum warmup validation
+    if args.momentum_warmup and args.momentum is None:
+        raise ValueError("--momentum-warmup requires --momentum to be specified")
 
     
     # --- Argument Validation ---
@@ -1320,4 +1369,5 @@ if __name__ == '__main__':
         wandb_run_id=wandb_run_id,
         track_trajectory=args.track_trajectory,
         projection_seed=args.projection_seed,
+        momentum_warmup_steps=args.momentum_warmup_steps if (args.momentum is not None and args.momentum_warmup) else 0,
     )
