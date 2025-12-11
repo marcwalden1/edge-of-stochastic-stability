@@ -171,6 +171,18 @@ def main() -> None:
                 loss_ax.set_yscale('log')
                 loss_ax.set_ylabel('Loss (log)')
 
+        # Draw horizontal line at 2/eta (eta == lr) using the same color
+        # Determine x-range for the line based on plotted step range
+        # Prefer max_steps if provided; otherwise use max step present in df
+        try:
+            xmax = args.max_steps if args.max_steps is not None else int(df['step'].max())
+        except Exception:
+            xmax = None
+        if xmax is None or xmax <= 0:
+            xmax = 1
+        y_level = 2.0 / lr
+        ax.hlines(y=y_level, xmin=0, xmax=xmax, colors=color, linestyles=':', label=f"2/eta ({label})")
+
     ax.set_xlabel('steps')
     ax.set_ylabel('sharpness')
     ax.set_title(f"Metrics vs steps ({args.subdir}) batch={args.batch}")
