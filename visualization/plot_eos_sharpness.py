@@ -181,7 +181,7 @@ def main() -> None:
         if xmax is None or xmax <= 0:
             xmax = 1
         y_level = 2.0 / lr
-        ax.hlines(y=y_level, xmin=0, xmax=xmax, colors=color, linestyles=':', label=f"2/eta ({label})")
+        ax.hlines(y=y_level, xmin=0, xmax=xmax, colors=color, linestyles=':')
 
     ax.set_xlabel('steps')
     ax.set_ylabel('sharpness')
