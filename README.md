@@ -1,6 +1,6 @@
 # Edge of Stochastic Stability (EoSS)
 
-This repository accompanies the paper [Edge of Stochastic Stability: Revisiting the Edge of Stability for SGD](https://arxiv.org/abs/2412.20553) by Arseniy Andreyev and Pierfrancesco Beneventano. Feel free to reuse it in any way - if you ended up using this code, please consider citing it by citing our paper.
+This repository accompanies the paper [Edge of Stochastic Stability: Revisiting the Edge of Stability for SGD](https://arxiv.org/abs/2412.20553) by Arseniy Andreyev and Pierfrancesco Beneventano. Marc Walden and Advikar Ananthkumar added features to it for their paper An Empirical Study of the Edge of Stochastic Stability with Momentum. Feel free to reuse it in any way - if you ended up using this code, please consider citing it.
 
 ## Key Capabilities
 - Run training for MLP/CNN/ResNet on CIFAR‑10/Fashion‑MNIST/SVHN with SGD, SGDM, or Adam.
