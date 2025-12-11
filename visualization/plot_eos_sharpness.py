@@ -42,9 +42,28 @@ def iter_run_folders(results_root: Path) -> Iterable[Path]:
 
 def parse_run_info(folder: Path) -> tuple[int, float]:
     parts = folder.name.split('_')
-    lr = float(next(p for p in parts if p.startswith('lr'))[2:])
-    batch_size = int(next(p for p in parts if p.startswith('b'))[1:])
+    lr_token = next(p for p in parts if p.startswith('lr'))
+    b_token = next(p for p in parts if p.startswith('b'))
+    # Support both lr0.00667 and lr0.0066666 etc.
+    lr_str = lr_token[2:]
+    batch_size = int(b_token[1:])
+    try:
+        lr = float(lr_str)
+    except ValueError:
+        # In case of unexpected formatting, raise a clear error
+        raise ResultsConfigError(f"Unable to parse learning rate from folder name: {folder.name}")
     return batch_size, lr
+
+
+def lr_matches(lr_value: float, targets: List[float]) -> bool:
+    # Consider near-equality with small tolerance and common rounding presentation
+    for t in targets:
+        if abs(lr_value - t) <= max(1e-8, 1e-5 * max(1.0, abs(t))):
+            return True
+        # Compare with 5 decimal places as strings to handle tokens like 0.00667 vs 0.0066666
+        if f"{lr_value:.5f}" == f"{t:.5f}":
+            return True
+    return False
 
 
 def load_results(folder: Path) -> pd.DataFrame:
@@ -74,7 +93,8 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="EoS plot: metrics vs steps across multiple runs.")
     parser.add_argument("--subdir", type=str, required=True, help="Relative subdir under $RESULTS/plaintext (e.g., cifar10_mlp)")
     parser.add_argument("--batch", type=int, required=True, help="Batch size to include (e.g., 8192)")
-    parser.add_argument("--lrs", type=float, nargs="+", required=True, help="List of learning rates to include (e.g., 0.02 0.01 0.0066667 0.005)")
+    parser.add_argument("--lrs", type=float, nargs="+", required=False, default=[], help="List of learning rates to include (e.g., 0.02 0.01 0.0066667 0.005)")
+    parser.add_argument("--runs", type=str, nargs="+", required=False, default=None, help="Explicit run folder names under the subdir (e.g., 20251210_2101_35_lr0.00667_b8192)")
     parser.add_argument("--include-batch-sharpness", action="store_true", help="Include batch_sharpness curves")
     parser.add_argument("--include-sharpness", action="store_true", help="Include step_sharpness (averaged) curves")
     parser.add_argument("--include-loss", action="store_true", help="Include full_loss curve (secondary axis)")
@@ -91,15 +111,22 @@ def main() -> None:
 
     # Find matching runs
     runs: List[tuple[Path, int, float]] = []
-    for folder in iter_run_folders(results_root):
+    candidate_folders: List[Path]
+    if args.runs:
+        candidate_folders = [results_root / r for r in args.runs]
+    else:
+        candidate_folders = list(iter_run_folders(results_root))
+
+    for folder in candidate_folders:
         try:
             bsz, lr = parse_run_info(folder)
         except Exception:
             continue
         if bsz != args.batch:
             continue
-        if lr not in args.lrs:
-            continue
+        if args.lrs:
+            if not lr_matches(lr, args.lrs):
+                continue
         if not (folder / 'results.txt').exists():
             continue
         runs.append((folder, bsz, lr))
@@ -152,7 +179,10 @@ def main() -> None:
     if args.output:
         output_path = img_dir / args.output
     else:
-        lr_tag = '_'.join(str(x) for x in args.lrs)
+        if args.lrs:
+            lr_tag = '_'.join(str(x) for x in args.lrs)
+        else:
+            lr_tag = '_'.join(f"{r[2]:.5f}" for r in runs)
         output_path = img_dir / f"eos_{args.subdir}_b{args.batch}_lrs_{lr_tag}.png"
     fig.savefig(output_path, dpi=300, bbox_inches='tight')
     print(f"Plot saved to: {output_path}")
