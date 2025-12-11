@@ -99,6 +99,7 @@ def main() -> None:
     parser.add_argument("--include-sharpness", action="store_true", help="Include step_sharpness (averaged) curves")
     parser.add_argument("--include-loss", action="store_true", help="Include full_loss curve (secondary axis)")
     parser.add_argument("--output", type=str, default=None, help="Output image filename (default auto)")
+    parser.add_argument("--max-steps", type=int, default=None, help="If set, only plot data with step <= this value (e.g., 12000)")
 
     args = parser.parse_args()
 
@@ -148,17 +149,23 @@ def main() -> None:
 
         if args.include_batch_sharpness:
             bs_df = df[['step', 'batch_sharpness']].dropna()
+            if args.max_steps is not None:
+                bs_df = bs_df[bs_df['step'] <= args.max_steps]
             if not bs_df.empty:
                 ax.plot(bs_df['step'], bs_df['batch_sharpness'], color=color, label=label)
 
         if args.include_sharpness:
             ss_df = df[['step', 'step_sharpness']].dropna()
+            if args.max_steps is not None:
+                ss_df = ss_df[ss_df['step'] <= args.max_steps]
             if not ss_df.empty:
                 averaged = rolling_average(ss_df['step_sharpness'])
                 ax.plot(ss_df['step'], averaged, color=color, linestyle='--', label=label + ' (step)')
 
         if args.include_loss and loss_ax is not None:
             loss_df = df[['step', 'full_loss']].dropna()
+            if args.max_steps is not None:
+                loss_df = loss_df[loss_df['step'] <= args.max_steps]
             if not loss_df.empty:
                 loss_ax.plot(loss_df['step'], loss_df['full_loss'], color=color, alpha=0.4, label=label + ' loss')
                 loss_ax.set_yscale('log')
