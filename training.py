@@ -78,6 +78,8 @@ class MeasurementRunner:
         projection_seed=888,
         wandb_run=None,
         wandb_run_id=None,
+        final_percent: float | None = None,
+        total_steps: int | None = None,
     ):
         self.net = net
         self.loss_fn = loss_fn
@@ -101,6 +103,15 @@ class MeasurementRunner:
         self.wandb_run = wandb_run
         self.wandb_run_id = wandb_run_id
 
+        # Final-phase gating for selective measurements
+        self.final_percent = final_percent
+        self.total_steps = total_steps
+        if self.final_percent is not None and self.total_steps is not None and self.total_steps > 0:
+            start_ratio = max(0.0, min(1.0, 1.0 - self.final_percent / 100.0))
+            self.final_start_step = int(self.total_steps * start_ratio)
+        else:
+            self.final_start_step = None
+
         self.eigenvalues_log = []
         if 'lmax' in measurements and num_eigenvalues > 1:
             eigenvalues_path = save_dir / 'eigenvalues.json'
@@ -113,6 +124,12 @@ class MeasurementRunner:
         if self.eigenvalues_file is not None:
             self.eigenvalues_file.write('\n]')
             self.eigenvalues_file.close()
+
+    def _in_final_phase(self, step_number: int) -> bool:
+        """Return True if step is in the final-percent window, or if no gating is configured."""
+        if self.final_start_step is None:
+            return True
+        return step_number >= self.final_start_step
 
     def collect(
         self,
@@ -153,7 +170,8 @@ class MeasurementRunner:
 
         # ----- Batch sharpness (expected Rayleigh quotient) -----
         if 'batch_sharpness' in self.measurements:
-            if frequency_calculator.should_measure('batch_sharpness', ctx):
+            # Restrict to final X% of steps if configured
+            if self._in_final_phase(step_number) and frequency_calculator.should_measure('batch_sharpness', ctx):
                 metrics['batch_sharpness'] = calculate_averaged_grad_H_grad_step(
                     self.net,
                     self.X,
@@ -176,7 +194,11 @@ class MeasurementRunner:
         lmax_now = False
         if 'lmax' in self.measurements:
             measurement_type = 'full_batch_lambda_max'
-            lmax_now = frequency_calculator.should_measure(measurement_type, ctx)
+            # Restrict to final X% of steps if configured
+            if self._in_final_phase(step_number):
+                lmax_now = frequency_calculator.should_measure(measurement_type, ctx)
+            else:
+                lmax_now = False
 
         if lmax_now:
             if str(self.device).startswith('cuda'):
@@ -490,6 +512,7 @@ def train(
             track_trajectory: bool = False,  # If True, save projected weights as wandb artifacts
             projection_seed: int = 888,  # Seed for projection matrix
             momentum_warmup_steps: int = 100,  # If momentum is specified, use momentum=0 for first N steps
+            final_percent: float | None = None,  # If set, compute certain measurements only in the last X% of steps
             ):
     
     # -------------------------------------
@@ -640,6 +663,8 @@ def train(
         projection_seed=projection_seed,
         wandb_run=wandb_run,
         wandb_run_id=wandb_run_id,
+        final_percent=final_percent,
+        total_steps=max_steps,
     )
     # ----- Run Identification -----
     run_id = wandb_run_id or generate_run_id()
@@ -1075,7 +1100,8 @@ if __name__ == '__main__':
     parser.add_argument('--grad-projection', action='store_true', help='Compute grad_projection_i: fraction of full-batch gradient lying in span of top-i cached Hessian eigenvectors (i up to 20); uses cached eigenvectors only; only for plain SGD')
     parser.add_argument('--one-step-loss-change', action='store_true', help='If set, compute the expected one-step change in loss using Monte Carlo estimation')
     parser.add_argument('--gradient-norm', action='store_true', help='If set, compute the Monte Carlo estimate of squared norm of mini-batch gradients')
-    parser.add_argument('--final', action='store_true', help='If set, compute the lambda_max and step sharpness at the end')
+    parser.add_argument('--final', type=float, default=None,
+                        help='Restrict computation of --batch-sharpness and --lambdamax to the last X percent of total steps (e.g., 20). Range: (0, 100].')
 
     
     # --- Measurement Flags (Tertiary, aka almost completely useless) ---
@@ -1174,8 +1200,13 @@ if __name__ == '__main__':
 
     
     # --- Argument Validation ---
-    if args.final:
-        raise ValueError("--final needs to be re-implemented")
+    final_percent = None
+    if args.final is not None:
+        if args.final <= 0 or args.final > 100:
+            raise ValueError("--final must be a percentage in the range (0, 100]")
+        if args.steps is None:
+            raise ValueError("--final requires --steps to be specified (percent applies to total step count)")
+        final_percent = float(args.final)
 
     if args.param_distance:
         raise NotImplementedError("--param-distance needs to be re-implemented")
@@ -1222,7 +1253,6 @@ if __name__ == '__main__':
     ('one_step_loss_change', args.one_step_loss_change),
     ('gni', args.gni),
     ('fisher', args.fisher),
-    ('final', args.final),
     ('param_distance', args.param_distance),
     ('hessian_trace', args.hessian_trace),
     ('trajectory_tracking', args.track_trajectory),
@@ -1369,5 +1399,6 @@ if __name__ == '__main__':
         wandb_run_id=wandb_run_id,
         track_trajectory=args.track_trajectory,
         projection_seed=args.projection_seed,
+        final_percent=final_percent,
         momentum_warmup_steps=args.momentum_warmup_steps if (args.momentum is not None and args.momentum_warmup) else 0,
     )
