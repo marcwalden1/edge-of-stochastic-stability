@@ -571,9 +571,17 @@ def train(
         if current_momentum is not None and current_momentum > 0:
             target_momentum = current_momentum
             original_lr = optimizer.param_groups[0]['lr']
-            # During warmup (momentum=0), use higher LR to compensate
-            # After warmup (momentum=m), use LR scaled by (1-m) to maintain effective step size
-            warmup_lr = original_lr / (1 - target_momentum)  # Higher LR during warmup
+            # During warmup (momentum=0), set LR based on batch size vs training data size
+            # If batch_size < total_training_data_size/2: use original_lr/(1 - m)
+            # Else: use original_lr/(1 + m)
+            try:
+                total_training_data_size = len(X)
+            except Exception:
+                total_training_data_size = batch_size  # fallback
+            if batch_size < (total_training_data_size / 2):
+                warmup_lr = original_lr / (1 - target_momentum)
+            else:
+                warmup_lr = original_lr / (1 + target_momentum)
             # Set momentum to 0 and adjust LR for warmup period (only if starting from step 0)
             if step_to_start < momentum_warmup_steps:
                 for param_group in optimizer.param_groups:
