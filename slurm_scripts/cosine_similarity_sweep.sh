@@ -27,7 +27,7 @@ python training.py \
   --model mlp \
   --batch $BATCH_SIZE \
   --lr $LR \
-  --steps 1000 \
+  --steps 21000 \
   --num-data 8192 \
   --activation relu \
   --init-scale 0.2 \

@@ -940,8 +940,8 @@ def train(
                 # Backward pass for minibatch gradient
                 loss.backward()
 
-                # Cosine similarity tracking
-                if track_cosine_similarity:
+                # Cosine similarity tracking (only after step 20000)
+                if track_cosine_similarity and step_number >= 20000:
                     current_grad = grads_vector(net)
                     momentum_buf = get_momentum_buffer_vector(optimizer)
 
@@ -950,6 +950,9 @@ def train(
 
                     cosine_sim_file.write(f'{step_number},{cos_consecutive},{cos_momentum},{batch_size}\n')
                     prev_gradient = current_grad.clone()
+                elif track_cosine_similarity and step_number == 19999:
+                    # Initialize prev_gradient at step 19999 so we can compute consecutive similarity starting from step 20000
+                    prev_gradient = grads_vector(net).clone()
 
                 optimizer.step()
 
