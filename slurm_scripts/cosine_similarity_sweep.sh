@@ -15,8 +15,8 @@ BATCH_SIZE=${BATCH_SIZES[$SLURM_ARRAY_TASK_ID]}
 
 # Learning rate scaled with batch size (base lr = 0.01 at batch=64)
 # Using linear scaling: lr = base_lr * batch_size / 64
-BASE_LR=0.01
-LR=$(python3 -c "print(f'{$BASE_LR * $BATCH_SIZE / 64:.6f}')")
+
+LR=0.004
 
 echo "Running cosine similarity tracking with batch_size=$BATCH_SIZE, lr=$LR"
 
