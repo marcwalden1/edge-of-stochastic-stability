@@ -15,16 +15,17 @@ import time
 import os
 from scipy import stats
 
-__all__ = ['param_vector', 'param_length', 'flatt', 'grads_vector', 
-           'calculate_all_the_grads', 'compute_eigenvalues', 'compute_grad_H_grad', 
-           'calculate_averaged_lambdamax', 'create_ntk', 
+__all__ = ['param_vector', 'param_length', 'flatt', 'grads_vector',
+           'calculate_all_the_grads', 'compute_eigenvalues', 'compute_grad_H_grad',
+           'calculate_averaged_lambdamax', 'create_ntk',
            'compute_fisher_eigenvalues', 'calculate_all_net_grads',
            'calculate_averaged_grad_H_grad', 'calculate_averaged_grad_H_grad_step', 'calculate_gni',
            'calculate_accuracy', 'calculate_param_distance',
            'EigenvectorCache', 'create_hessian_vector_product', 'compute_multiple_eigenvalues_lobpcg',
            'calculate_gradient_norm_squared_mc', 'calculate_expected_one_step_full_loss_change',
            'calculate_expected_one_step_batch_loss_change', 'compute_gradient_projection_ratios',
-           'estimate_hessian_trace', 'gimme_new_rng', 'gimme_random_subset_idx']
+           'estimate_hessian_trace', 'gimme_new_rng', 'gimme_random_subset_idx',
+           'compute_cosine_similarity', 'get_momentum_buffer_vector']
 
 
 class EigenvectorCache:
@@ -110,12 +111,38 @@ def flatt(vectors):
     return T.cat([v.flatten() for v in vectors])
 
 
-def grads_vector(net):  
+def grads_vector(net):
     # pull out all the gradients from a network as one vector
     grads = []
     for p in net.parameters():
         grads.append(p.grad.flatten().detach().clone())
     return T.cat(grads)
+
+
+def compute_cosine_similarity(vec1: T.Tensor, vec2: T.Tensor) -> float:
+    """Compute cosine similarity between two flattened vectors."""
+    if vec1 is None or vec2 is None:
+        return float('nan')
+    norm1, norm2 = T.linalg.vector_norm(vec1), T.linalg.vector_norm(vec2)
+    if norm1.item() < 1e-12 or norm2.item() < 1e-12:
+        return float('nan')
+    return (T.dot(vec1, vec2) / (norm1 * norm2)).item()
+
+
+def get_momentum_buffer_vector(optimizer: T.optim.Optimizer) -> T.Tensor | None:
+    """Extract flattened momentum buffer from SGD optimizer."""
+    if not isinstance(optimizer, T.optim.SGD):
+        return None
+    buffers = []
+    for group in optimizer.param_groups:
+        if group.get('momentum', 0) == 0:
+            return None
+        for p in group['params']:
+            state = optimizer.state.get(p)
+            if state is None or 'momentum_buffer' not in state:
+                return None
+            buffers.append(state['momentum_buffer'].flatten().detach().clone())
+    return T.cat(buffers) if buffers else None
 
 
 def gimme_new_rng():

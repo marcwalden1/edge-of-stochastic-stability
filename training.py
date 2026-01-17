@@ -513,6 +513,7 @@ def train(
             projection_seed: int = 888,  # Seed for projection matrix
             momentum_warmup_steps: int = 100,  # If momentum is specified, use momentum=0 for first N steps
             final_percent: float | None = None,  # If set, compute certain measurements only in the last X% of steps
+            track_cosine_similarity: bool = False,  # Track cosine similarity between consecutive gradients and gradient-momentum
             ):
     
     # -------------------------------------
@@ -632,6 +633,13 @@ def train(
     # ----- Training State Trackers -----
     epoch_loss = float('+inf')
     stop_training = False
+
+    # ----- Cosine Similarity Tracking State -----
+    prev_gradient = None
+    cosine_sim_file = None
+    if track_cosine_similarity:
+        cosine_sim_file = open(save_to / 'cosine_similarity.csv', 'w')
+        cosine_sim_file.write('step,cos_sim_consecutive_grad,cos_sim_grad_momentum,batch_size\n')
 
     # -------------------------------------
     # Section: Measurements
@@ -932,6 +940,17 @@ def train(
                 # Backward pass for minibatch gradient
                 loss.backward()
 
+                # Cosine similarity tracking
+                if track_cosine_similarity:
+                    current_grad = grads_vector(net)
+                    momentum_buf = get_momentum_buffer_vector(optimizer)
+
+                    cos_consecutive = compute_cosine_similarity(prev_gradient, current_grad) if prev_gradient is not None else float('nan')
+                    cos_momentum = compute_cosine_similarity(current_grad, momentum_buf) if momentum_buf is not None else float('nan')
+
+                    cosine_sim_file.write(f'{step_number},{cos_consecutive},{cos_momentum},{batch_size}\n')
+                    prev_gradient = current_grad.clone()
+
                 optimizer.step()
 
 
@@ -1015,6 +1034,9 @@ def train(
     results_file.close()
 
     measurement_runner.close()
+
+    if cosine_sim_file is not None:
+        cosine_sim_file.close()
 
     # ----- WandB Teardown -----
     if wandb_run is not None:
@@ -1102,6 +1124,8 @@ if __name__ == '__main__':
     parser.add_argument('--step-sharpness', action='store_true', dest='step_sharpness',
                         help='If set, compute the step sharpness: the current-mini-batch Rayleigh quotient g·Hg/g². Average across steps to recover the traditional batch sharpness.')
     parser.add_argument('--gni', action='store_true', help='If set, compute the Gradient-Noise Interaction quantity.')
+    parser.add_argument('--cosine-similarity', action='store_true',
+                        help='Track cosine similarity between consecutive gradients and gradient-momentum')
 
     # --- Measurement Flags (Secondary, aka still useful) ---
     parser.add_argument('--hessian-trace', action='store_true', help='Estimate the trace of the full-batch loss Hessian via a Hutchinson-style estimator')
@@ -1409,4 +1433,5 @@ if __name__ == '__main__':
         projection_seed=args.projection_seed,
         final_percent=final_percent,
         momentum_warmup_steps=args.momentum_warmup_steps if (args.momentum is not None and args.momentum_warmup) else 0,
+        track_cosine_similarity=args.cosine_similarity,
     )

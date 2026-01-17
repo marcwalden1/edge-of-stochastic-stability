@@ -13,6 +13,7 @@ from pathlib import Path
 from typing import Dict, List, Optional
 import numpy as np
 import pandas as pd
+from bisect import bisect_left
 
 try:
     import wandb
@@ -201,7 +202,7 @@ def load_projected_weights_from_artifacts(
                 # This is tricky - we might need to sync first or use a different approach
                 # For now, just return None and let the user know
                 os.chdir(original_dir)
-            except Exception as e:
+            except Exception:
                 if 'original_dir' in locals():
                     os.chdir(original_dir)
         
@@ -643,6 +644,167 @@ def compute_distances(
     return distances
 
 
+def compute_true_distances(
+    run_id1: str,
+    run_id2: str,
+    project: Optional[str] = None,
+    entity: Optional[str] = None,
+    wandb_dir: Optional[Path] = None,
+    cache_dir: Optional[Path] = None,
+    offline: bool = False,
+    block_size: int = 1024,
+    steps1: Optional[List[int]] = None,
+    steps2: Optional[List[int]] = None,
+    output_file: Optional[Path] = None,
+    window_size: Optional[int] = None,
+    window_mode: str = 'step',
+    lr1: Optional[float] = None,
+    lr2: Optional[float] = None,
+) -> int:
+    """
+    Compute all pairwise L2 distances between run1 and run2 projected weights.
+    Uses block processing and NumPy vectorization for speed and memory safety.
+
+    Saves a long-form CSV with columns: step_run1, step_run2, weight_distance.
+    Returns the number of rows written.
+    """
+    # Discover steps if not provided
+    if steps1 is None:
+        steps1 = sorted(get_available_steps(run_id1, project, entity, wandb_dir, offline=offline))
+    if steps2 is None:
+        steps2 = sorted(get_available_steps(run_id2, project, entity, wandb_dir, offline=offline))
+
+    if not steps1 or not steps2:
+        print("Error: No artifacts available for one or both runs.", file=sys.stderr)
+        return 0
+
+    # Cache/load all artifacts for both runs
+    cache1 = download_all_artifacts_to_cache(
+        run_id1, steps1, project, entity,
+        cache_dir / run_id1 if cache_dir else None,
+        wandb_dir=wandb_dir, offline=offline
+    )
+    cache2 = download_all_artifacts_to_cache(
+        run_id2, steps2, project, entity,
+        cache_dir / run_id2 if cache_dir else None,
+        wandb_dir=wandb_dir, offline=offline
+    )
+
+    # Filter to steps that actually loaded
+    steps1 = [s for s in steps1 if s in cache1]
+    steps2 = [s for s in steps2 if s in cache2]
+    if not steps1 or not steps2:
+        print("Error: No artifacts loaded for one or both runs.", file=sys.stderr)
+        return 0
+
+    # Stack into matrices (use float64 for numerical stability)
+    try:
+        A = np.stack([cache1[s] for s in steps1]).astype(np.float64, copy=False)  # shape (n1, d)
+        B = np.stack([cache2[s] for s in steps2]).astype(np.float64, copy=False)  # shape (n2, d)
+    except Exception as e:
+        print(f"Error stacking artifacts: {e}", file=sys.stderr)
+        return 0
+
+    # Prepare output
+    out_path = Path(output_file) if output_file else Path(f"trajectory_distances_true_{run_id1}_{run_id2}.csv")
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    if out_path.exists():
+        # Start fresh for true pairwise dump
+        try:
+            out_path.unlink()
+        except Exception:
+            pass
+
+    rows_written = 0
+    n1 = A.shape[0]
+    n2 = B.shape[0]
+
+    if window_size is not None and window_size > 0:
+        # Sliding window mode: per A step, compare against a window in B
+        half = max(1, window_size // 2)
+        # Precompute squared norms for B once
+        b2_full = (B**2).sum(axis=1)
+        for i, s1 in enumerate(steps1):
+            a = A[i]  # (d,)
+            a2 = float((a**2).sum())
+            # Center index in B
+            if window_mode == 'eta' and (lr1 is not None) and (lr2 is not None):
+                target_step = int(round(s1 * (lr1 / lr2)))
+                j0 = bisect_left(steps2, target_step)
+                # bisect_left returns insertion point; pick nearest valid index
+                if j0 >= n2:
+                    j0 = n2 - 1
+                elif j0 > 0 and (abs(steps2[j0] - target_step) > abs(steps2[j0-1] - target_step)):
+                    j0 = j0 - 1
+            else:
+                # step-based alignment: center on matching/nearest step number
+                j0 = bisect_left(steps2, s1)
+                if j0 >= n2:
+                    j0 = n2 - 1
+                elif j0 > 0 and (abs(steps2[j0] - s1) > abs(steps2[j0-1] - s1)):
+                    j0 = j0 - 1
+
+            j_start = max(0, j0 - half)
+            j_end = min(n2, j0 + half + 1)  # slice end is exclusive
+            if j_end <= j_start:
+                continue
+
+            Bc = B[j_start:j_end]                 # (m, d)
+            b2 = b2_full[j_start:j_end]           # (m,)
+            cross = Bc @ a                        # (m,)
+            # Numerical stabilization: clamp tiny negative values to 0 before sqrt
+            d2 = a2 + b2 - 2.0 * cross            # (m,)
+            d2 = np.maximum(d2, 0.0)
+            dists = np.sqrt(d2)                   # (m,)
+
+            df_chunk = pd.DataFrame({
+                'step_run1': np.full(j_end - j_start, s1, dtype=int),
+                'step_run2': steps2[j_start:j_end],
+                'weight_distance': dists
+            })
+            try:
+                df_chunk.to_csv(out_path, index=False, mode='a', header=(rows_written == 0))
+            except Exception as e:
+                print(f"Error writing CSV chunk: {e}", file=sys.stderr)
+                return rows_written
+            rows_written += df_chunk.shape[0]
+            if (i + 1) % 50 == 0:
+                print(f"  Processed {i + 1}/{n1} A-steps; total rows {rows_written}")
+    else:
+        # Full pairwise mode: process B in blocks and compare against all A
+        # Precompute squared norms for fast pairwise distances
+        a2 = (A**2).sum(axis=1)                    # (n1,)
+        for j in range(0, n2, block_size):
+            Bc = B[j:j+block_size]                # (k, d)
+            if Bc.size == 0:
+                continue
+            b2 = (Bc**2).sum(axis=1)              # (k,)
+            # Pairwise distances via expansion: ||a-b||^2 = ||a||^2 + ||b||^2 - 2 a·b
+            cross = A @ Bc.T                      # (n1, k)
+            d2 = a2[:, None] + b2[None, :] - 2.0 * cross         # (n1, k)
+            d2 = np.maximum(d2, 0.0)
+            D = np.sqrt(d2)                       # (n1, k)
+
+            step_run2_chunk = steps2[j:j+block_size]
+            # Long-form rows: all pairs in this block
+            df_chunk = pd.DataFrame({
+                'step_run1': np.repeat(steps1, len(step_run2_chunk)),
+                'step_run2': np.tile(step_run2_chunk, len(steps1)),
+                'weight_distance': D.reshape(-1)
+            })
+            # Append chunk
+            try:
+                df_chunk.to_csv(out_path, index=False, mode='a', header=(rows_written == 0))
+            except Exception as e:
+                print(f"Error writing CSV chunk: {e}", file=sys.stderr)
+                return rows_written
+            rows_written += df_chunk.shape[0]
+            print(f"  Wrote {df_chunk.shape[0]} rows (total {rows_written})")
+
+    print(f"Saved pairwise distances to: {out_path}")
+    return rows_written
+
+
 def load_lambda_max_from_results(run_id: str, results_root: Optional[Path] = None) -> pd.DataFrame:
     """
     Load lambda_max values from results.txt file.
@@ -708,6 +870,11 @@ def main():
     parser.add_argument('--lr2', type=float, default=None, help='Learning rate for second run (for step*eta matching)')
     parser.add_argument('--cache-dir', type=str, default=None, help='Directory to cache artifacts (default: ~/.cache/trajectory_distances)')
     parser.add_argument('--offline', action='store_true', help='Force offline mode: skip wandb API and use filesystem only')
+    # Pairwise true distance mode
+    parser.add_argument('--true', action='store_true', help='Compute all pairwise distances (run1 vs run2)')
+    parser.add_argument('--block-size', type=int, default=1024, help='Block size for pairwise distance computation')
+    parser.add_argument('--window-size', type=int, default=None, help='Sliding window size in run B per A point (limits comparisons to ~window-size points around aligned index)')
+    parser.add_argument('--window-mode', type=str, choices=['step','eta'], default='step', help='Center window using matching step or equivalent step*eta (requires --lr1/--lr2 for eta)')
     
     args = parser.parse_args()
     
@@ -736,6 +903,36 @@ def main():
             print("Starting fresh computation...")
     
     print(f"Computing distances between run {args.run_id1} and {args.run_id2}...")
+
+    # True pairwise mode
+    if args.true:
+        if args.output is None:
+            args.output = f"trajectory_distances_true_{args.run_id1}_{args.run_id2}.csv"
+        rows = compute_true_distances(
+            run_id1=args.run_id1,
+            run_id2=args.run_id2,
+            project=args.project,
+            entity=args.entity,
+            wandb_dir=wandb_dir,
+            cache_dir=cache_dir,
+            offline=args.offline,
+            block_size=args.block_size,
+            steps1=None,
+            steps2=None,
+            output_file=Path(args.output),
+            window_size=args.window_size,
+            window_mode=args.window_mode,
+            lr1=args.lr1,
+            lr2=args.lr2,
+        )
+
+
+        if rows == 0:
+            print("No pairwise distances computed.", file=sys.stderr)
+            return 1
+        print(f"Computed {rows} pairwise distance rows")
+        print(f"Saved to: {args.output}")
+        return 0
     
     # Compute distances (with incremental saving)
     distances = compute_distances(
@@ -767,7 +964,6 @@ def main():
             'step_run2': [int(round(s * (args.lr1 / args.lr2))) for s in steps],
             'weight_distance': [distances[s] for s in steps]
         })
-        step_col_for_merge = 'step_run1'
     else:
         df = pd.DataFrame({
             'step': steps,
