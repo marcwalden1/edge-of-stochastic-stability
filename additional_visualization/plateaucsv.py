@@ -155,8 +155,8 @@ def main() -> int:
         print("No results found!")
         return 1
 
-    # Output paths next to this script
-    out_dir = Path(__file__).parent
+    # Output paths in home directory to avoid quota issues on cluster
+    out_dir = Path(os.path.expanduser('~'))
     #output_json = out_dir / 'plateau_values.json'
     output_csv = out_dir / 'plateau_values.csv'
 
