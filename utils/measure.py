@@ -722,15 +722,16 @@ def calculate_averaged_grad_H_grad(net,
     rng = torch.Generator()
     rng.manual_seed(entropy_seed)
 
+    # Clear cache once before starting MC estimation (not inside the loop)
+    if batch_size > 128 and torch.cuda.is_available():
+        torch.cuda.empty_cache()
+
     for i in range(n_estimates):
         shuffle = T.randperm(len(X), generator=rng)
         random_idx = shuffle[:batch_size]
         if with_replacement:
             random_idx = T.randint(0, len(X), (batch_size,), generator=rng)
-            
-        if batch_size > 128:
-            torch.cuda.empty_cache()
-         
+
         X_batch = X[random_idx]
         Y_batch = Y[random_idx]
 
