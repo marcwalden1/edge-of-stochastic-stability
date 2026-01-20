@@ -79,11 +79,6 @@ def calculate_plateau_values(results_root: Path) -> List[Dict[str, Any]]:
                 if col in df.columns:
                     df[col] = pd.to_numeric(df[col], errors='coerce')
 
-            # Window for moving average: 10% of available steps (>=1)
-            window = max(1, int(len(df) * 0.1))
-            # Plateau window: last 20% of steps
-            plateau_start_idx = int(len(df) * 0.8)
-
             result: Dict[str, Any] = {
                 'batch_size': batch_size,
                 'learning_rate': lr,
@@ -101,12 +96,14 @@ def calculate_plateau_values(results_root: Path) -> List[Dict[str, Any]]:
                 if series.empty:
                     continue
 
-                # Moving average over the run
+                # Moving average over the run (10% window of actual measurements)
+                window = max(1, int(len(series) * 0.1))
                 ma = series.rolling(window=window, center=True, min_periods=1).mean()
                 result[f'{metric}_moving_avg_final'] = float(ma.iloc[-1]) if not ma.empty else None
 
-                # Plateau: average of the last 20%
-                plateau_series = series.iloc[plateau_start_idx:] if plateau_start_idx < len(series) else series
+                # Plateau: average of the last 20% of actual measurements (not rows)
+                metric_plateau_idx = int(len(series) * 0.8)
+                plateau_series = series.iloc[metric_plateau_idx:]
                 result[f'{metric}_plateau'] = float(plateau_series.mean()) if not plateau_series.empty else None
                 result[f'{metric}_plateau_std'] = float(plateau_series.std()) if not plateau_series.empty else None
 
@@ -128,6 +125,12 @@ def main() -> int:
         "--subdir",
         default="plaintext/cifar10_cnn",
         help='Relative subdir under RESULTS (e.g., "plaintext/cifar10_cnn" or "plaintext/cifar10_mlp")',
+    )
+    parser.add_argument(
+        "--output-dir",
+        type=str,
+        default=None,
+        help='Output directory for CSV file (default: tries /tmp, then current directory, then home)',
     )
     args = parser.parse_args()
 
@@ -155,20 +158,47 @@ def main() -> int:
         print("No results found!")
         return 1
 
-    # Output paths in home directory to avoid quota issues on cluster
-    out_dir = Path(os.path.expanduser('~'))
-    #output_json = out_dir / 'plateau_values.json'
+    # Determine output directory: try user-specified, then /tmp, then current dir, then home
+    if args.output_dir:
+        out_dir = Path(args.output_dir)
+        out_dir.mkdir(parents=True, exist_ok=True)
+    else:
+        # Try multiple locations in order of preference
+        candidates = [
+            Path('/tmp'),  # Usually has more space on clusters
+            Path('.'),     # Current directory
+            Path(os.path.expanduser('~')),  # Home directory (may have quota issues)
+        ]
+        out_dir = None
+        for candidate in candidates:
+            try:
+                # Test write access
+                test_file = candidate / '.plateaucsv_test'
+                test_file.write_text('test')
+                test_file.unlink()
+                out_dir = candidate
+                break
+            except (OSError, PermissionError):
+                continue
+        
+        if out_dir is None:
+            print("Error: Could not find a writable output directory. Try --output-dir")
+            return 1
+
     output_csv = out_dir / 'plateau_values.csv'
 
-    # Save JSON
-    #with open(output_json, 'w') as f:
-    #    json.dump(results, f, indent=2)
-    #print(f"\nSaved JSON results to: {output_json}")
-
-    # Save CSV
-    df = pd.DataFrame(results)
-    df.to_csv(output_csv, index=False)
-    print(f"Saved CSV results to: {output_csv}")
+    # Save CSV with error handling
+    try:
+        df = pd.DataFrame(results)
+        df.to_csv(output_csv, index=False)
+        print(f"Saved CSV results to: {output_csv}")
+    except OSError as e:
+        if e.errno == 122:  # Disk quota exceeded
+            print(f"Error: Disk quota exceeded when writing to {output_csv}")
+            print(f"Try specifying a different location with --output-dir (e.g., --output-dir /tmp)")
+            return 1
+        else:
+            raise
 
     # Print brief summary (first 10 runs)
     print(f"\nFound {len(results)} completed runs")

@@ -18,8 +18,8 @@ import argparse
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).parent))
 
-from utils.data import prepare_dataset
-from utils.nets import SquaredLoss, prepare_net, initialize_net
+from utils.data import prepare_dataset, get_dataset_presets
+from utils.nets import SquaredLoss, prepare_net, initialize_net, get_model_presets
 from utils.measure import (
     compute_eigenvalues,
     calculate_averaged_grad_H_grad_step,
@@ -70,22 +70,29 @@ def main():
     print(f"Configuration: model={model_type}, batch_size={batch_size}, num_data={num_data}")
     print()
 
-    # Load data
+    # Load data (matching training.py signature)
     print("Loading dataset...")
-    X, Y = prepare_dataset(
-        dataset='cifar10',
-        num_data=num_data,
-        classes=[1, 9],
-        folder=DATASET_FOLDER,
-        seed=111,
-    )
+    dataset = 'cifar10'
+    classes = [1, 9]
+    X, Y = prepare_dataset(dataset, DATASET_FOLDER, num_data, classes, dataset_seed=111)
     X, Y = X.to(device), Y.to(device)
     print(f"Data shape: X={X.shape}, Y={Y.shape}")
 
-    # Create model
+    # Create model (matching training.py setup)
     print("Creating model...")
-    net = prepare_net(model_type, X, 'silu')
-    initialize_net(net, 0.2, seed=8312)
+    model_presets = get_model_presets()
+    dataset_presets = get_dataset_presets()
+
+    params = model_presets[model_type]['params'].copy()
+    params['input_dim'] = dataset_presets[dataset]['input_dim']
+    params['output_dim'] = dataset_presets[dataset]['output_dim']
+    params['activation'] = 'silu'
+
+    net = prepare_net(
+        model_type=model_presets[model_type]['type'],
+        params=params
+    )
+    initialize_net(net, scale=0.2, seed=8312)
     net = net.to(device)
     num_params = sum(p.numel() for p in net.parameters())
     print(f"Model parameters: {num_params:,}")
