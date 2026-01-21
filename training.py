@@ -639,7 +639,7 @@ def train(
     cosine_sim_file = None
     if track_cosine_similarity:
         cosine_sim_file = open(save_to / 'cosine_similarity.csv', 'w')
-        cosine_sim_file.write('step,cos_sim_consecutive_grad,cos_sim_grad_momentum,batch_size\n')
+        cosine_sim_file.write('step,cos_sim_consecutive_grad,cos_sim_grad_momentum,cos_sim_grad_prev_momentum,batch_size\n')
 
     # -------------------------------------
     # Section: Measurements
@@ -940,21 +940,25 @@ def train(
                 # Backward pass for minibatch gradient
                 loss.backward()
 
-                # Capture gradient before optimizer.step() for cosine similarity tracking
+                # Capture gradient and momentum buffer before optimizer.step() for cosine similarity tracking
                 if track_cosine_similarity and step_number >= 19999:
                     current_grad = grads_vector(net)
+                    # Capture v_{t-1} before optimizer.step() updates it to v_t
+                    prev_momentum_buf = get_momentum_buffer_vector(optimizer)
 
                 optimizer.step()
 
                 # Cosine similarity tracking (only after step 20000)
-                # Must be after optimizer.step() so momentum_buf contains v_t = β*v_{t-1} + g_t
+                # After optimizer.step(): momentum_buf contains v_t = β*v_{t-1} + g_t
+                # prev_momentum_buf (captured above) contains v_{t-1}
                 if track_cosine_similarity and step_number >= 20000:
                     momentum_buf = get_momentum_buffer_vector(optimizer)
 
                     cos_consecutive = compute_cosine_similarity(prev_gradient, current_grad) if prev_gradient is not None else float('nan')
                     cos_momentum = compute_cosine_similarity(current_grad, momentum_buf) if momentum_buf is not None else float('nan')
+                    cos_prev_momentum = compute_cosine_similarity(current_grad, prev_momentum_buf) if prev_momentum_buf is not None else float('nan')
 
-                    cosine_sim_file.write(f'{step_number},{cos_consecutive},{cos_momentum},{batch_size}\n')
+                    cosine_sim_file.write(f'{step_number},{cos_consecutive},{cos_momentum},{cos_prev_momentum},{batch_size}\n')
                     prev_gradient = current_grad.clone()
                 elif track_cosine_similarity and step_number == 19999:
                     # Initialize prev_gradient at step 19999 so we can compute consecutive similarity starting from step 20000
