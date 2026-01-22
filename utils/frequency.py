@@ -88,12 +88,15 @@ class FrequencyCalculator:
             else:
                 base_freq = 64
 
-            if ctx.step_number < 10 / ctx.lr:
+            # Cap early measurement threshold to prevent explosion with small LRs
+            # e.g., lr=0.0001 would give 100k steps of high-freq measurements without cap
+            early_threshold = min(10 / ctx.lr, 2000)
+            if ctx.step_number < early_threshold:
                 if ctx.batch_size < 33:
                     base_freq = 64
                 else:
                     base_freq = 16
-            
+
             freq = base_freq
             if ctx.step_number > 10_000:
                 freq *= 2
@@ -315,13 +318,14 @@ class FrequencyCalculator:
             else:
                 base_freq = 64
 
-            if ctx.step_number < 10 / ctx.lr:
+            # Cap early measurement threshold (same as lambdamax)
+            early_threshold = min(10 / ctx.lr, 2000)
+            if ctx.step_number < early_threshold:
                 if ctx.batch_size < 33:
                     base_freq = 64
                 else:
                     base_freq = 32
-                    
-            
+
             freq = base_freq
             if ctx.step_number > 10_000:
                 freq *= 2
