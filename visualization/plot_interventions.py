@@ -57,6 +57,7 @@ class RunInfo:
     variant: str
     lr: float
     batch_size: int
+    momentum: float = 0.0
 
 
 def require_env_path(name: str) -> Path:
@@ -65,6 +66,22 @@ def require_env_path(name: str) -> Path:
     if not value:
         raise RuntimeError(f"Set {name} environment variable before running this script.")
     return Path(value)
+
+
+def extract_momentum_from_results(folder: Path) -> float:
+    """Extract momentum value from results.txt header (Arguments line)."""
+    file_path = folder / 'results.txt'
+    if not file_path.exists():
+        return 0.0
+
+    with open(file_path, 'r') as f:
+        for line in f:
+            if 'Arguments:' in line or 'momentum' in line.lower():
+                # Look for momentum=X.X pattern in the arguments
+                match = re.search(r'momentum[=:\s]+([\d.]+)', line, re.IGNORECASE)
+                if match:
+                    return float(match.group(1))
+    return 0.0
 
 
 def find_intervention_runs(results_dir: Path, experiment_type: str,
@@ -94,12 +111,14 @@ def find_intervention_runs(results_dir: Path, experiment_type: str,
 
                 # Keep the most recent run for each variant
                 if variant not in runs or run_folder.stat().st_mtime > runs[variant].folder.stat().st_mtime:
+                    momentum = extract_momentum_from_results(run_folder)
                     runs[variant] = RunInfo(
                         folder=run_folder,
                         experiment_tag=f"{experiment_name}_{experiment_type}_{variant}",
                         variant=variant,
                         lr=lr,
                         batch_size=batch_size,
+                        momentum=momentum,
                     )
 
     return runs
@@ -149,12 +168,32 @@ def plot_intervention_comparison(
     """
     fig, ax = plt.subplots(figsize=(12, 6))
 
-    # Determine LR for 2/η line (use baseline run A)
-    baseline_lr = runs.get('A', list(runs.values())[0]).lr if runs else 0.004
+    # Get Run A (baseline) parameters
+    run_a = runs.get('A')
+    if run_a:
+        eta_a = run_a.lr
+        beta_a = run_a.momentum
+    else:
+        # Fallback to first available run
+        first_run = list(runs.values())[0] if runs else None
+        eta_a = first_run.lr if first_run else 0.004
+        beta_a = first_run.momentum if first_run else 0.0
 
-    # Add 2/η reference line
-    ax.axhline(y=2 / baseline_lr, color='black', linestyle='--',
-               label=r'2/$\eta$ = ' + f'{2/baseline_lr:.1f}', alpha=0.7)
+    # Theoretical stabilization value for Run A: 2/η_A * (1 - β_A)
+    theoretical_a = (2 / eta_a) * (1 - beta_a)
+    ax.axhline(y=theoretical_a, color='#1f77b4', linestyle='--',
+               label=r'$\frac{2}{\eta_A}(1-\beta_A)$ = ' + f'{theoretical_a:.1f}', alpha=0.7)
+
+    # Check if Run B has different LR or momentum from Run A
+    run_b = runs.get('B')
+    if run_b:
+        eta_b = run_b.lr
+        beta_b = run_b.momentum
+        # Add Run B theoretical line if LR or momentum differs
+        if abs(eta_b - eta_a) > 1e-8 or abs(beta_b - beta_a) > 1e-8:
+            theoretical_b = (2 / eta_b) * (1 - beta_b)
+            ax.axhline(y=theoretical_b, color='#ff7f0e', linestyle='--',
+                       label=r'$\frac{2}{\eta_B}(1-\beta_B)$ = ' + f'{theoretical_b:.1f}', alpha=0.7)
 
     # Plot each variant
     for variant in ['A', 'B', 'C']:
