@@ -27,45 +27,90 @@
 #   7  | batch    | B       | lr=0.004, mom=0.9, batch=32
 #   8  | batch    | C       | baseline -> batch=32 at intervention step
 #
-# Environment variables:
-#   MODEL                    - Model architecture (default: mlp)
-#   STEPS                    - Total training steps (default: 100000)
-#   INTERVENTION_STEP        - Step at which Run C switches hyperparameters (default: 50000)
-#   INTERVENTION_LR_VALUE    - LR for Run B/C intervention (default: 0.004, same as baseline)
-#   INTERVENTION_MOMENTUM_VALUE - Momentum for Run B/C (default: 0.9, same as baseline)
-#   INTERVENTION_BATCH_VALUE - Batch size for Run B/C (default: 16, same as baseline)
-#   DATASET                  - Dataset name (default: cifar10)
-#   EXPERIMENT_NAME          - Prefix for result folders (default: intervention)
+# Arguments (passed after -- to sbatch):
+#   --model MODEL            - Model architecture (default: mlp)
+#   --steps STEPS            - Total training steps (default: 100000)
+#   --intervention-step N    - Step at which Run C switches hyperparameters (default: 50000)
+#   --intervention-lr LR     - LR for Run B/C intervention (default: 0.004, same as baseline)
+#   --intervention-momentum M - Momentum for Run B/C (default: 0.9, same as baseline)
+#   --intervention-batch B   - Batch size for Run B/C (default: 16, same as baseline)
+#   --dataset DATASET        - Dataset name (default: cifar10)
+#   --experiment-name NAME   - Prefix for result folders (default: intervention)
 #
 # Usage:
 #   # Default run (MLP, 100k steps, B=A so no actual change)
 #   sbatch slurm_scripts/training_interventions.sbatch
 #
 #   # LR intervention: B uses lr=0.003, C switches to lr=0.003 at step 25000
-#   INTERVENTION_LR_VALUE=0.003 INTERVENTION_STEP=25000 sbatch --array=0-2 slurm_scripts/training_interventions.sbatch
+#   sbatch --array=0-2 slurm_scripts/training_interventions.sbatch --intervention-lr 0.003 --intervention-step 25000
 #
 #   # Momentum intervention with CNN
-#   MODEL=cnn INTERVENTION_MOMENTUM_VALUE=0.8 sbatch --array=3-5 slurm_scripts/training_interventions.sbatch
+#   sbatch --array=3-5 slurm_scripts/training_interventions.sbatch --model cnn --intervention-momentum 0.8
 #
 #   # Batch size intervention
-#   INTERVENTION_BATCH_VALUE=32 sbatch --array=6-8 slurm_scripts/training_interventions.sbatch
-
-# Environment variables with defaults
-MODEL=${MODEL:-mlp}
-STEPS=${STEPS:-100000}
-INTERVENTION_STEP=${INTERVENTION_STEP:-50000}
-EXPERIMENT_NAME=${EXPERIMENT_NAME:-intervention}
-DATASET=${DATASET:-cifar10}
+#   sbatch --array=6-8 slurm_scripts/training_interventions.sbatch --intervention-batch 32
+#
+#   # Full experiment with all parameters
+#   sbatch slurm_scripts/training_interventions.sbatch \
+#     --intervention-lr 0.003 --intervention-momentum 0.8 --intervention-batch 32 \
+#     --intervention-step 50000 --model mlp --steps 100000
 
 # Baseline hyperparameters (Run A - fixed)
 BASELINE_LR=0.004
 BASELINE_MOMENTUM=0.9
 BASELINE_BATCH=16
 
-# Intervention hyperparameters (Run B values - configurable, default to baseline)
-INTERVENTION_LR_VALUE=${INTERVENTION_LR_VALUE:-${BASELINE_LR}}
-INTERVENTION_MOMENTUM_VALUE=${INTERVENTION_MOMENTUM_VALUE:-${BASELINE_MOMENTUM}}
-INTERVENTION_BATCH_VALUE=${INTERVENTION_BATCH_VALUE:-${BASELINE_BATCH}}
+# Default values (same as baseline)
+MODEL="mlp"
+STEPS=100000
+INTERVENTION_STEP=50000
+EXPERIMENT_NAME="intervention"
+DATASET="cifar10"
+INTERVENTION_LR_VALUE=${BASELINE_LR}
+INTERVENTION_MOMENTUM_VALUE=${BASELINE_MOMENTUM}
+INTERVENTION_BATCH_VALUE=${BASELINE_BATCH}
+
+# Parse command-line arguments
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --model)
+            MODEL="$2"
+            shift 2
+            ;;
+        --steps)
+            STEPS="$2"
+            shift 2
+            ;;
+        --intervention-step)
+            INTERVENTION_STEP="$2"
+            shift 2
+            ;;
+        --intervention-lr)
+            INTERVENTION_LR_VALUE="$2"
+            shift 2
+            ;;
+        --intervention-momentum)
+            INTERVENTION_MOMENTUM_VALUE="$2"
+            shift 2
+            ;;
+        --intervention-batch)
+            INTERVENTION_BATCH_VALUE="$2"
+            shift 2
+            ;;
+        --dataset)
+            DATASET="$2"
+            shift 2
+            ;;
+        --experiment-name)
+            EXPERIMENT_NAME="$2"
+            shift 2
+            ;;
+        *)
+            echo "Unknown argument: $1"
+            exit 1
+            ;;
+    esac
+done
 
 # Create logs directory if needed
 mkdir -p logs
