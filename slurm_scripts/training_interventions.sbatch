@@ -27,15 +27,28 @@
 #   7  | batch    | B       | lr=0.004, mom=0.9, batch=32
 #   8  | batch    | C       | baseline -> batch=32 at intervention step
 #
+# Environment variables:
+#   MODEL                    - Model architecture (default: mlp)
+#   STEPS                    - Total training steps (default: 100000)
+#   INTERVENTION_STEP        - Step at which Run C switches hyperparameters (default: 50000)
+#   INTERVENTION_LR_VALUE    - LR for Run B/C intervention (default: 0.004, same as baseline)
+#   INTERVENTION_MOMENTUM_VALUE - Momentum for Run B/C (default: 0.9, same as baseline)
+#   INTERVENTION_BATCH_VALUE - Batch size for Run B/C (default: 16, same as baseline)
+#   DATASET                  - Dataset name (default: cifar10)
+#   EXPERIMENT_NAME          - Prefix for result folders (default: intervention)
+#
 # Usage:
-#   # Default run (MLP, 100k steps)
+#   # Default run (MLP, 100k steps, B=A so no actual change)
 #   sbatch slurm_scripts/training_interventions.sbatch
 #
-#   # Custom model and steps
-#   MODEL=cnn STEPS=50000 INTERVENTION_STEP=25000 sbatch slurm_scripts/training_interventions.sbatch
+#   # LR intervention: B uses lr=0.003, C switches to lr=0.003 at step 25000
+#   INTERVENTION_LR_VALUE=0.003 INTERVENTION_STEP=25000 sbatch --array=0-2 slurm_scripts/training_interventions.sbatch
 #
-#   # Run specific experiments only
-#   sbatch --array=0-2 slurm_scripts/training_interventions.sbatch  # LR experiments only
+#   # Momentum intervention with CNN
+#   MODEL=cnn INTERVENTION_MOMENTUM_VALUE=0.8 sbatch --array=3-5 slurm_scripts/training_interventions.sbatch
+#
+#   # Batch size intervention
+#   INTERVENTION_BATCH_VALUE=32 sbatch --array=6-8 slurm_scripts/training_interventions.sbatch
 
 # Environment variables with defaults
 MODEL=${MODEL:-mlp}
@@ -44,15 +57,15 @@ INTERVENTION_STEP=${INTERVENTION_STEP:-50000}
 EXPERIMENT_NAME=${EXPERIMENT_NAME:-intervention}
 DATASET=${DATASET:-cifar10}
 
-# Baseline hyperparameters
+# Baseline hyperparameters (Run A - fixed)
 BASELINE_LR=0.004
 BASELINE_MOMENTUM=0.9
 BASELINE_BATCH=16
 
-# Intervention hyperparameters (the "B" values)
-INTERVENTION_LR_VALUE=0.003
-INTERVENTION_MOMENTUM_VALUE=0.8
-INTERVENTION_BATCH_VALUE=32
+# Intervention hyperparameters (Run B values - configurable, default to baseline)
+INTERVENTION_LR_VALUE=${INTERVENTION_LR_VALUE:-${BASELINE_LR}}
+INTERVENTION_MOMENTUM_VALUE=${INTERVENTION_MOMENTUM_VALUE:-${BASELINE_MOMENTUM}}
+INTERVENTION_BATCH_VALUE=${INTERVENTION_BATCH_VALUE:-${BASELINE_BATCH}}
 
 # Create logs directory if needed
 mkdir -p logs
@@ -65,6 +78,8 @@ echo "Model: ${MODEL}"
 echo "Dataset: ${DATASET}"
 echo "Total Steps: ${STEPS}"
 echo "Intervention Step: ${INTERVENTION_STEP}"
+echo "Baseline (A): LR=${BASELINE_LR}, Mom=${BASELINE_MOMENTUM}, Batch=${BASELINE_BATCH}"
+echo "Intervention (B): LR=${INTERVENTION_LR_VALUE}, Mom=${INTERVENTION_MOMENTUM_VALUE}, Batch=${INTERVENTION_BATCH_VALUE}"
 echo "========================================"
 
 # Map task ID to experiment configuration
