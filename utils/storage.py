@@ -24,7 +24,9 @@ def initialize_folders(args, results_folder):
 
     def generate_folder_name(args):
         timestamp = datetime.now().strftime('%Y%m%d_%H%M_%S')
-        config_name = f'{timestamp}_lr{args.lr:.5f}_b{args.batch}' 
+        config_name = f'{timestamp}_lr{args.lr:.5f}_b{args.batch}'
+        if hasattr(args, 'experiment_tag') and args.experiment_tag:
+            config_name = f'{args.experiment_tag}_{config_name}'
         return config_name
     
     while True:

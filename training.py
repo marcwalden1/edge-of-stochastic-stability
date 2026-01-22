@@ -730,6 +730,23 @@ def train(
                 if verbose:
                     print(f"Step {step_number}: Switching from momentum=0 (LR={warmup_lr:.6f}) to momentum={target_momentum} (LR={original_lr:.6f})")
 
+            # --- Intervention: Apply hyperparameter changes at intervention step ---
+            if args.intervention_step is not None and step_number == args.intervention_step:
+                if args.intervention_lr is not None:
+                    old_lr = optimizer.param_groups[0]['lr']
+                    for param_group in optimizer.param_groups:
+                        param_group['lr'] = args.intervention_lr
+                    print(f"Step {step_number}: INTERVENTION - LR changed from {old_lr:.6f} to {args.intervention_lr:.6f}")
+                if args.intervention_momentum is not None:
+                    old_momentum = optimizer.param_groups[0].get('momentum', 0)
+                    for param_group in optimizer.param_groups:
+                        param_group['momentum'] = args.intervention_momentum
+                    print(f"Step {step_number}: INTERVENTION - Momentum changed from {old_momentum:.3f} to {args.intervention_momentum:.3f}")
+                if args.intervention_batch is not None:
+                    old_batch_size = batch_size
+                    batch_size = args.intervention_batch
+                    print(f"Step {step_number}: INTERVENTION - Batch size changed from {old_batch_size} to {batch_size}")
+
             msg = f"{epoch:03d}, {step_number:05d}, "
             # --- Measurement Context and Sampling ---
             ctx = MeasurementContext(
@@ -1185,6 +1202,18 @@ if __name__ == '__main__':
                         help='Number of top Hessian eigendirections to project against/onto after switch step')
     parser.add_argument('--proj-to-residual', dest='proj_to_residual', action='store_true',
                         help='After --proj-switch-step, apply gradient projected to orthogonal complement of top-l eigenspace')
+
+    # --- Intervention Configuration ---
+    parser.add_argument('--intervention-step', type=int, default=None,
+                        help='Step number at which to apply hyperparameter intervention')
+    parser.add_argument('--intervention-lr', type=float, default=None,
+                        help='New learning rate to apply at intervention step')
+    parser.add_argument('--intervention-momentum', type=float, default=None,
+                        help='New momentum to apply at intervention step')
+    parser.add_argument('--intervention-batch', type=int, default=None,
+                        help='New batch size to apply at intervention step')
+    parser.add_argument('--experiment-tag', type=str, default=None,
+                        help='Tag prefix for experiment folder name (e.g., intervention_lr_A)')
 
     # --- Randomness Settings ---
     parser.add_argument('--dataset-seed', '--dataset_seed', type=int, default=888, help='Random seed for dataset preparation')
