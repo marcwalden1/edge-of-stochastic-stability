@@ -232,7 +232,7 @@ python training.py \
     --lr ${LR} \
     --momentum ${MOMENTUM} \
     --batch ${BATCH} \
-    --max-steps ${STEPS} \
+    --steps ${STEPS} \
     --batch-sharpness \
     --experiment-tag ${EXPERIMENT_TAG} \
     ${INTERVENTION_ARGS}
