@@ -162,6 +162,9 @@ def plot_intervention_comparison(
     """
     fig, ax = plt.subplots(figsize=(12, 6))
 
+    # Create secondary y-axis for loss (will be plotted in background)
+    ax2 = ax.twinx()
+
     # Get Run A (baseline) parameters
     run_a = runs.get('A')
     if run_a:
@@ -188,6 +191,31 @@ def plot_intervention_comparison(
             theoretical_b = (2 / eta_b) * (1 - beta_b)
             ax.axhline(y=theoretical_b, color='#9467bd', linestyle='--',
                        label=r'$\frac{2}{\eta_B}(1-\beta_B)$ = ' + f'{theoretical_b:.1f}', alpha=0.7)
+
+    # Plot loss curves in background (faded, on secondary axis)
+    for variant in ['A', 'B', 'C']:
+        if variant not in runs:
+            continue
+        run = runs[variant]
+        try:
+            df = load_results(run)
+        except RuntimeError:
+            continue
+        # Use batch_loss column (column index 2, named 'batch_loss')
+        loss_data = df[['step', 'batch_loss']].dropna()
+        if not loss_data.empty:
+            ax2.plot(
+                loss_data['step'],
+                loss_data['batch_loss'],
+                color=VARIANT_COLORS[variant],
+                linewidth=0.5,
+                alpha=0.15,
+            )
+    # Add a single legend entry for loss with matching faded/thin style
+    ax2.plot([], [], color='gray', linewidth=0.5, alpha=0.3, label='Loss')
+    ax2.set_ylabel('Loss', fontsize=10, alpha=0.5)
+    ax2.tick_params(axis='y', labelcolor='gray', alpha=0.5)
+    ax2.set_yscale('log')
 
     # Generate dynamic labels based on experiment type
     def get_variant_label(variant: str, run: RunInfo, experiment_type: str,
@@ -257,7 +285,10 @@ def plot_intervention_comparison(
     }
     ax.set_title(f'{type_labels.get(experiment_type, experiment_type)} Intervention Experiment',
                  fontsize=14)
-    ax.legend(loc='upper right', fontsize=10)
+    # Combine legends from both axes
+    lines1, labels1 = ax.get_legend_handles_labels()
+    lines2, labels2 = ax2.get_legend_handles_labels()
+    ax.legend(lines1 + lines2, labels1 + labels2, loc='upper right', fontsize=8, framealpha=0.9)
     ax.grid(True, alpha=0.3)
 
     # Set y-axis to start from 0 with some headroom
