@@ -80,6 +80,9 @@ class MeasurementRunner:
         wandb_run_id=None,
         final_percent: float | None = None,
         total_steps: int | None = None,
+        X_test=None,
+        Y_test=None,
+        test_prediction_interval: int = 256,
     ):
         self.net = net
         self.loss_fn = loss_fn
@@ -120,10 +123,31 @@ class MeasurementRunner:
         else:
             self.eigenvalues_file = None
 
+        # Test set prediction snapshots for distance comparison
+        self.X_test = X_test
+        self.Y_test = Y_test
+        self.test_prediction_interval = test_prediction_interval
+        self.test_predictions_log = []
+        self.test_predictions_path = save_dir / 'test_predictions.npz' if 'test_predictions' in measurements else None
+
     def close(self):
         if self.eigenvalues_file is not None:
             self.eigenvalues_file.write('\n]')
             self.eigenvalues_file.close()
+
+        # Save test prediction snapshots
+        if self.test_predictions_log and self.test_predictions_path is not None:
+            steps = np.array([entry['step'] for entry in self.test_predictions_log], dtype=np.int32)
+            predictions = np.stack([entry['predictions'] for entry in self.test_predictions_log], axis=0)
+            np.savez_compressed(
+                self.test_predictions_path,
+                steps=steps,
+                predictions=predictions,
+                num_snapshots=len(steps),
+                test_set_size=predictions.shape[1],
+                num_classes=predictions.shape[2]
+            )
+            print(f"Saved {len(steps)} test prediction snapshots to {self.test_predictions_path}")
 
     def _in_final_phase(self, step_number: int) -> bool:
         """Return True if step is in the final-percent window, or if no gating is configured."""
@@ -456,7 +480,20 @@ class MeasurementRunner:
                 f"Epoch {epoch + 1}, Step {step_in_epoch}: Batch Lambda Max = {metrics['batch_lmax']}, "
                 f"Loss = {loss.item()}"
             )
-    
+
+        # ----- Test Set Prediction Snapshots -----
+        if 'test_predictions' in self.measurements:
+            if self.X_test is not None and step_number % self.test_prediction_interval == 0:
+                with torch.no_grad():
+                    X_test_device = self.X_test.to(self.device)
+                    logits = self.net(X_test_device).squeeze(dim=-1)
+                    preds = torch.nn.functional.softmax(logits, dim=-1)
+                    pred_np = preds.cpu().numpy().astype(np.float32)
+                    self.test_predictions_log.append({
+                        'step': step_number,
+                        'predictions': pred_np
+                    })
+                    print(f"Saved test prediction snapshot at step {step_number}")
 
         metrics['epoch_loss_update'] = epoch_loss_update
         return metrics
@@ -514,6 +551,7 @@ def train(
             momentum_warmup_steps: int = 100,  # If momentum is specified, use momentum=0 for first N steps
             final_percent: float | None = None,  # If set, compute certain measurements only in the last X% of steps
             track_cosine_similarity: bool = False,  # Track cosine similarity between consecutive gradients and gradient-momentum
+            test_prediction_interval: int = 256,  # Interval for test prediction snapshots
             ):
     
     # -------------------------------------
@@ -681,6 +719,9 @@ def train(
         wandb_run_id=wandb_run_id,
         final_percent=final_percent,
         total_steps=max_steps,
+        X_test=X_test if 'test_predictions' in measurements else None,
+        Y_test=Y_test if 'test_predictions' in measurements else None,
+        test_prediction_interval=test_prediction_interval,
     )
     # ----- Run Identification -----
     run_id = wandb_run_id or generate_run_id()
@@ -1154,6 +1195,10 @@ if __name__ == '__main__':
     parser.add_argument('--gni', action='store_true', help='If set, compute the Gradient-Noise Interaction quantity.')
     parser.add_argument('--cosine-similarity', action='store_true',
                         help='Track cosine similarity between consecutive gradients and gradient-momentum')
+    parser.add_argument('--measure-test-distance', action='store_true',
+                        help='Enable test set prediction snapshots for post-training distance comparison')
+    parser.add_argument('--calc-distance-every-steps', type=int, default=256,
+                        help='Interval for test prediction snapshots (default: 256 steps)')
 
     # --- Measurement Flags (Secondary, aka still useful) ---
     parser.add_argument('--hessian-trace', action='store_true', help='Estimate the trace of the full-batch loss Hessian via a Hutchinson-style estimator')
@@ -1328,6 +1373,7 @@ if __name__ == '__main__':
     ('param_distance', args.param_distance),
     ('hessian_trace', args.hessian_trace),
     ('trajectory_tracking', args.track_trajectory),
+    ('test_predictions', args.measure_test_distance),
     ] if enabled}
 
     # ----- Result Storage Setup -----
@@ -1474,4 +1520,5 @@ if __name__ == '__main__':
         final_percent=final_percent,
         momentum_warmup_steps=args.momentum_warmup_steps if (args.momentum is not None and args.momentum_warmup) else 0,
         track_cosine_similarity=args.cosine_similarity,
+        test_prediction_interval=args.calc_distance_every_steps,
     )
