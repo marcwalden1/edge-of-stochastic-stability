@@ -773,20 +773,46 @@ def train(
 
             # --- Intervention: Apply hyperparameter changes at intervention step ---
             if args.intervention_step is not None and step_number == args.intervention_step:
+                # Track if any intervention happened (to reset momentum buffer)
+                intervention_applied = False
+
                 if args.intervention_lr is not None:
                     old_lr = optimizer.param_groups[0]['lr']
                     for param_group in optimizer.param_groups:
                         param_group['lr'] = args.intervention_lr
                     print(f"Step {step_number}: INTERVENTION - LR changed from {old_lr:.6f} to {args.intervention_lr:.6f}")
+                    intervention_applied = True
                 if args.intervention_momentum is not None:
                     old_momentum = optimizer.param_groups[0].get('momentum', 0)
                     for param_group in optimizer.param_groups:
                         param_group['momentum'] = args.intervention_momentum
                     print(f"Step {step_number}: INTERVENTION - Momentum changed from {old_momentum:.3f} to {args.intervention_momentum:.3f}")
+                    intervention_applied = True
                 if args.intervention_batch is not None:
                     old_batch_size = batch_size
                     batch_size = args.intervention_batch
                     print(f"Step {step_number}: INTERVENTION - Batch size changed from {old_batch_size} to {batch_size}")
+                    # Break out of current epoch to restart with new batch size
+                    # (otherwise loop bounds are wrong and we get empty batches)
+                    print(f"Step {step_number}: Breaking epoch to apply new batch size")
+                    intervention_applied = True
+                    # Reset momentum buffer before breaking
+                    for group in optimizer.param_groups:
+                        for p in group['params']:
+                            state = optimizer.state.get(p)
+                            if state is not None and 'momentum_buffer' in state:
+                                state['momentum_buffer'].zero_()
+                    break  # Break inner loop, new epoch will use correct batch_size
+
+                # Reset momentum buffers for LR/momentum interventions
+                # The stale buffer from the old regime pushes the model to wrong regions
+                if intervention_applied and args.intervention_batch is None:
+                    for group in optimizer.param_groups:
+                        for p in group['params']:
+                            state = optimizer.state.get(p)
+                            if state is not None and 'momentum_buffer' in state:
+                                state['momentum_buffer'].zero_()
+                    print(f"Step {step_number}: Momentum buffer reset for clean dynamics")
 
             msg = f"{epoch:03d}, {step_number:05d}, "
             # --- Measurement Context and Sampling ---
