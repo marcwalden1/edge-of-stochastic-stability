@@ -30,7 +30,7 @@
 # Arguments (passed after -- to sbatch):
 #   --model MODEL            - Model architecture (default: mlp)
 #   --steps STEPS            - Total training steps (default: 100000)
-#   --intervention-step N    - Step at which Run C switches hyperparameters (default: 30000)
+#   --intervention-step N    - Step at which Run C switches hyperparameters (default: 15000)
 #   --intervention-lr LR     - LR for Run B/C intervention (default: 0.004, same as baseline)
 #   --intervention-momentum M - Momentum for Run B/C (default: 0.9, same as baseline)
 #   --intervention-batch B   - Batch size for Run B/C (default: 16, same as baseline)
@@ -63,7 +63,7 @@ BASELINE_BATCH=16
 # Default values (same as baseline)
 MODEL="mlp"
 STEPS=100000
-INTERVENTION_STEP=30000
+INTERVENTION_STEP=15000
 EXPERIMENT_NAME="intervention"
 DATASET="cifar10"
 INTERVENTION_LR_VALUE=${BASELINE_LR}
