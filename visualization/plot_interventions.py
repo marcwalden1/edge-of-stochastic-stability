@@ -39,14 +39,8 @@ COLUMN_NAMES = [
 
 VARIANT_COLORS = {
     'A': '#1f77b4',  # Blue - baseline
-    'B': '#ff7f0e',  # Orange - changed from start
-    'C': '#2ca02c',  # Green - intervention
-}
-
-VARIANT_LABELS = {
-    'A': 'Run A (baseline)',
-    'B': 'Run B (changed)',
-    'C': 'Run C (intervention)',
+    'B': '#9467bd',  # Purple - changed from start
+    'C': '#d62728',  # Red - intervention
 }
 
 
@@ -192,8 +186,36 @@ def plot_intervention_comparison(
         # Add Run B theoretical line if LR or momentum differs
         if abs(eta_b - eta_a) > 1e-8 or abs(beta_b - beta_a) > 1e-8:
             theoretical_b = (2 / eta_b) * (1 - beta_b)
-            ax.axhline(y=theoretical_b, color='#ff7f0e', linestyle='--',
+            ax.axhline(y=theoretical_b, color='#9467bd', linestyle='--',
                        label=r'$\frac{2}{\eta_B}(1-\beta_B)$ = ' + f'{theoretical_b:.1f}', alpha=0.7)
+
+    # Generate dynamic labels based on experiment type
+    def get_variant_label(variant: str, run: RunInfo, experiment_type: str,
+                          run_a: Optional[RunInfo], run_b: Optional[RunInfo]) -> str:
+        """Generate label showing the relevant hyperparameter for this experiment type."""
+        if experiment_type == 'lr':
+            if variant == 'A':
+                return f'Run A (lr={run.lr})'
+            elif variant == 'B':
+                return f'Run B (lr={run.lr})'
+            elif variant == 'C' and run_a and run_b:
+                return f'Run C (lr={run_a.lr} → {run_b.lr})'
+        elif experiment_type == 'momentum':
+            if variant == 'A':
+                return f'Run A (mom={run.momentum})'
+            elif variant == 'B':
+                return f'Run B (mom={run.momentum})'
+            elif variant == 'C' and run_a and run_b:
+                return f'Run C (mom={run_a.momentum} → {run_b.momentum})'
+        elif experiment_type == 'batch':
+            if variant == 'A':
+                return f'Run A (batch={run.batch_size})'
+            elif variant == 'B':
+                return f'Run B (batch={run.batch_size})'
+            elif variant == 'C' and run_a and run_b:
+                return f'Run C (batch={run_a.batch_size} → {run_b.batch_size})'
+        # Fallback
+        return f'Run {variant}'
 
     # Plot each variant
     for variant in ['A', 'B', 'C']:
@@ -209,10 +231,11 @@ def plot_intervention_comparison(
 
         batch_sharp = df[['step', 'batch_sharpness']].dropna()
         if not batch_sharp.empty:
+            label = get_variant_label(variant, run, experiment_type, run_a, run_b)
             ax.plot(
                 batch_sharp['step'],
                 batch_sharp['batch_sharpness'],
-                label=VARIANT_LABELS[variant],
+                label=label,
                 color=VARIANT_COLORS[variant],
                 linewidth=1.5,
                 alpha=0.8,
@@ -220,8 +243,8 @@ def plot_intervention_comparison(
 
     # Mark intervention step with vertical line
     if intervention_step is not None:
-        ax.axvline(x=intervention_step, color='red', linestyle=':',
-                   label=f'Intervention step ({intervention_step})', linewidth=2)
+        ax.axvline(x=intervention_step, color='black', linestyle=':',
+                   label=f'Intervention step ({intervention_step})', linewidth=1)
 
     # Formatting
     ax.set_xlabel('Step', fontsize=12)
