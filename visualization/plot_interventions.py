@@ -288,7 +288,7 @@ def plot_intervention_comparison(
     # Combine legends from both axes
     lines1, labels1 = ax.get_legend_handles_labels()
     lines2, labels2 = ax2.get_legend_handles_labels()
-    ax.legend(lines1 + lines2, labels1 + labels2, loc='upper right', fontsize=8, framealpha=0.9)
+    ax.legend(lines1 + lines2, labels1 + labels2, loc='lower left', fontsize=8, framealpha=0.9)
     ax.grid(True, alpha=0.3)
 
     # Set y-axis to start from 0 with some headroom
