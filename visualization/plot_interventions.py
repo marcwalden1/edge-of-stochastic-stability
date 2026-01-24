@@ -209,12 +209,12 @@ def plot_intervention_comparison(
                 loss_data['batch_loss'],
                 color=VARIANT_COLORS[variant],
                 linewidth=0.5,
-                alpha=0.15,
+                alpha=0.3,
             )
     # Add a single legend entry for loss with matching faded/thin style
-    ax2.plot([], [], color='gray', linewidth=0.5, alpha=0.3, label='Loss')
-    ax2.set_ylabel('Loss', fontsize=10, alpha=0.5)
-    ax2.tick_params(axis='y', labelcolor='gray', alpha=0.5)
+    ax2.plot([], [], color='gray', linewidth=1.0, alpha=0.5, label='Loss')
+    ax2.set_ylabel('Loss', fontsize=10, alpha=0.7)
+    ax2.tick_params(axis='y', labelcolor='gray')
     ax2.set_yscale('log')
 
     # Generate dynamic labels based on experiment type
