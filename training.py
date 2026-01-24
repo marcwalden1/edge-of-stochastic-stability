@@ -802,6 +802,8 @@ def train(
                             state = optimizer.state.get(p)
                             if state is not None and 'momentum_buffer' in state:
                                 state['momentum_buffer'].zero_()
+                    # Update measurement_runner to use new batch size for sharpness calculations
+                    measurement_runner.batch_size = batch_size
                     break  # Break inner loop, new epoch will use correct batch_size
 
                 # Reset momentum buffers for LR/momentum interventions
