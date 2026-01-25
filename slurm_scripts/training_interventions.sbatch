@@ -28,53 +28,77 @@
 #   8  | batch    | C       | baseline -> batch=32 at intervention step
 #
 # Arguments (passed after -- to sbatch):
+#   --baseline-lr LR         - Baseline learning rate for Run A (REQUIRED)
+#   --baseline-momentum M    - Baseline momentum for Run A (REQUIRED)
+#   --baseline-batch B       - Baseline batch size for Run A (REQUIRED)
+#   --steps STEPS            - Total training steps (REQUIRED)
+#   --intervention-step N    - Step at which Run C switches hyperparameters (REQUIRED)
+#   --num-data N             - Number of CIFAR-10 data points for training (REQUIRED)
+#   --intervention-lr LR     - LR for Run B/C intervention (default: same as baseline)
+#   --intervention-momentum M - Momentum for Run B/C (default: same as baseline)
+#   --intervention-batch B   - Batch size for Run B/C (default: same as baseline)
 #   --model MODEL            - Model architecture (default: mlp)
-#   --steps STEPS            - Total training steps (default: 100000)
-#   --intervention-step N    - Step at which Run C switches hyperparameters (default: 50000)
-#   --intervention-lr LR     - LR for Run B/C intervention (default: 0.004, same as baseline)
-#   --intervention-momentum M - Momentum for Run B/C (default: 0.9, same as baseline)
-#   --intervention-batch B   - Batch size for Run B/C (default: 16, same as baseline)
 #   --dataset DATASET        - Dataset name (default: cifar10)
 #   --experiment-name NAME   - Prefix for result folders (default: intervention)
 #
 # Usage:
-#   # Default run (MLP, 100k steps, B=A so no actual change)
-#   sbatch slurm_scripts/training_interventions.sbatch
-#
-#   # LR intervention: B uses lr=0.003, C switches to lr=0.003 at step 25000
-#   sbatch --array=0-2 slurm_scripts/training_interventions.sbatch --intervention-lr 0.003 --intervention-step 25000
-#
-#   # Momentum intervention with CNN
-#   sbatch --array=3-5 slurm_scripts/training_interventions.sbatch --model cnn --intervention-momentum 0.8
-#
-#   # Batch size intervention
-#   sbatch --array=6-8 slurm_scripts/training_interventions.sbatch --intervention-batch 32
-#
-#   # Full experiment with all parameters
+#   # Full experiment with all required parameters
 #   sbatch slurm_scripts/training_interventions.sbatch \
-#     --intervention-lr 0.003 --intervention-momentum 0.8 --intervention-batch 32 \
-#     --intervention-step 50000 --model mlp --steps 100000
+#     --baseline-lr 0.004 --baseline-momentum 0.9 --baseline-batch 16 \
+#     --steps 200000 --intervention-step 100000 --num-data 32000 \
+#     --intervention-lr 0.003 --intervention-momentum 0.8 --intervention-batch 8
+#
+#   # LR intervention only
+#   sbatch --array=0-2 slurm_scripts/training_interventions.sbatch \
+#     --baseline-lr 0.004 --baseline-momentum 0.9 --baseline-batch 16 \
+#     --steps 200000 --intervention-step 100000 --num-data 32000 \
+#     --intervention-lr 0.003
+#
+#   # Momentum intervention only
+#   sbatch --array=3-5 slurm_scripts/training_interventions.sbatch \
+#     --baseline-lr 0.004 --baseline-momentum 0.9 --baseline-batch 16 \
+#     --steps 200000 --intervention-step 100000 --num-data 32000 \
+#     --intervention-momentum 0.8
+#
+#   # Batch size intervention only
+#   sbatch --array=6-8 slurm_scripts/training_interventions.sbatch \
+#     --baseline-lr 0.004 --baseline-momentum 0.9 --baseline-batch 16 \
+#     --steps 200000 --intervention-step 100000 --num-data 32000 \
+#     --intervention-batch 8
 
-# Baseline hyperparameters (Run A - fixed)
-BASELINE_LR=0.004
-BASELINE_MOMENTUM=0.9
-BASELINE_BATCH=16
+# Baseline hyperparameters (Run A) - must be specified via arguments
+BASELINE_LR=""
+BASELINE_MOMENTUM=""
+BASELINE_BATCH=""
 
-# Default values (same as baseline)
+# Required arguments
+STEPS=""
+INTERVENTION_STEP=""
+NUM_DATA=""
+
+# Default values
 MODEL="mlp"
-STEPS=120000
-INTERVENTION_STEP=50000
 EXPERIMENT_NAME="intervention"
 DATASET="cifar10"
-INTERVENTION_LR_VALUE=${BASELINE_LR}
-INTERVENTION_MOMENTUM_VALUE=${BASELINE_MOMENTUM}
-INTERVENTION_BATCH_VALUE=${BASELINE_BATCH}
+
+# Intervention values (default to baseline, set after parsing)
+INTERVENTION_LR_VALUE=""
+INTERVENTION_MOMENTUM_VALUE=""
+INTERVENTION_BATCH_VALUE=""
 
 # Parse command-line arguments
 while [[ $# -gt 0 ]]; do
     case $1 in
-        --model)
-            MODEL="$2"
+        --baseline-lr)
+            BASELINE_LR="$2"
+            shift 2
+            ;;
+        --baseline-momentum)
+            BASELINE_MOMENTUM="$2"
+            shift 2
+            ;;
+        --baseline-batch)
+            BASELINE_BATCH="$2"
             shift 2
             ;;
         --steps)
@@ -83,6 +107,10 @@ while [[ $# -gt 0 ]]; do
             ;;
         --intervention-step)
             INTERVENTION_STEP="$2"
+            shift 2
+            ;;
+        --num-data)
+            NUM_DATA="$2"
             shift 2
             ;;
         --intervention-lr)
@@ -95,6 +123,10 @@ while [[ $# -gt 0 ]]; do
             ;;
         --intervention-batch)
             INTERVENTION_BATCH_VALUE="$2"
+            shift 2
+            ;;
+        --model)
+            MODEL="$2"
             shift 2
             ;;
         --dataset)
@@ -112,6 +144,43 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
+# Validate required arguments
+if [[ -z "$BASELINE_LR" ]]; then
+    echo "Error: --baseline-lr is required"
+    exit 1
+fi
+if [[ -z "$BASELINE_MOMENTUM" ]]; then
+    echo "Error: --baseline-momentum is required"
+    exit 1
+fi
+if [[ -z "$BASELINE_BATCH" ]]; then
+    echo "Error: --baseline-batch is required"
+    exit 1
+fi
+if [[ -z "$STEPS" ]]; then
+    echo "Error: --steps is required"
+    exit 1
+fi
+if [[ -z "$INTERVENTION_STEP" ]]; then
+    echo "Error: --intervention-step is required"
+    exit 1
+fi
+if [[ -z "$NUM_DATA" ]]; then
+    echo "Error: --num-data is required"
+    exit 1
+fi
+
+# Set intervention values to baseline if not specified
+if [[ -z "$INTERVENTION_LR_VALUE" ]]; then
+    INTERVENTION_LR_VALUE=${BASELINE_LR}
+fi
+if [[ -z "$INTERVENTION_MOMENTUM_VALUE" ]]; then
+    INTERVENTION_MOMENTUM_VALUE=${BASELINE_MOMENTUM}
+fi
+if [[ -z "$INTERVENTION_BATCH_VALUE" ]]; then
+    INTERVENTION_BATCH_VALUE=${BASELINE_BATCH}
+fi
+
 # Create logs directory if needed
 mkdir -p logs
 
@@ -121,6 +190,7 @@ echo "========================================"
 echo "Array Task ID: ${SLURM_ARRAY_TASK_ID}"
 echo "Model: ${MODEL}"
 echo "Dataset: ${DATASET}"
+echo "Num Data: ${NUM_DATA}"
 echo "Total Steps: ${STEPS}"
 echo "Intervention Step: ${INTERVENTION_STEP}"
 echo "Baseline (A): LR=${BASELINE_LR}, Mom=${BASELINE_MOMENTUM}, Batch=${BASELINE_BATCH}"
@@ -233,7 +303,7 @@ python training.py \
     --momentum ${MOMENTUM} \
     --batch ${BATCH} \
     --steps ${STEPS} \
-    --num-data 50000 \
+    --num-data ${NUM_DATA} \
     --init-scale 0.2 \
     --activation silu \
     --stop-loss 0.00001 \
