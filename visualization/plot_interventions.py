@@ -52,6 +52,11 @@ class RunInfo:
     lr: float
     batch_size: int
     momentum: float = 0.0
+    # Intervention values (only relevant for Run C)
+    intervention_lr: Optional[float] = None
+    intervention_momentum: Optional[float] = None
+    intervention_batch: Optional[int] = None
+    intervention_step: Optional[int] = None
 
 
 def require_env_path(name: str) -> Path:
@@ -62,20 +67,70 @@ def require_env_path(name: str) -> Path:
     return Path(value)
 
 
-def extract_momentum_from_results(folder: Path) -> float:
-    """Extract momentum value from results.txt header (Arguments line)."""
+def extract_hyperparams_from_results(folder: Path) -> dict:
+    """Extract hyperparameters from results.txt header (Arguments line).
+
+    Returns dict with keys: lr, momentum, batch_size, intervention_lr,
+    intervention_momentum, intervention_batch, intervention_step
+    """
     file_path = folder / 'results.txt'
+    params = {
+        'lr': None,
+        'momentum': 0.0,
+        'batch_size': None,
+        'intervention_lr': None,
+        'intervention_momentum': None,
+        'intervention_batch': None,
+        'intervention_step': None,
+    }
+
     if not file_path.exists():
-        return 0.0
+        return params
 
     with open(file_path, 'r') as f:
         for line in f:
-            if 'Arguments:' in line or 'momentum' in line.lower():
-                # Look for momentum=X.X pattern in the arguments
-                match = re.search(r'momentum[=:\s]+([\d.]+)', line, re.IGNORECASE)
+            if 'Arguments:' in line or 'Namespace(' in line:
+                # Extract lr
+                match = re.search(r'\blr[=:\s]+([\d.]+)', line)
                 if match:
-                    return float(match.group(1))
-    return 0.0
+                    params['lr'] = float(match.group(1))
+
+                # Extract momentum (not intervention_momentum)
+                match = re.search(r'[^_]momentum[=:\s]+([\d.]+)', line)
+                if match:
+                    params['momentum'] = float(match.group(1))
+
+                # Extract batch size
+                match = re.search(r'\bbatch[=:\s]+(\d+)', line)
+                if match:
+                    params['batch_size'] = int(match.group(1))
+
+                # Extract intervention values
+                match = re.search(r'intervention_lr[=:\s]+([\d.]+)', line)
+                if match:
+                    params['intervention_lr'] = float(match.group(1))
+
+                match = re.search(r'intervention_momentum[=:\s]+([\d.]+)', line)
+                if match:
+                    params['intervention_momentum'] = float(match.group(1))
+
+                match = re.search(r'intervention_batch[=:\s]+(\d+)', line)
+                if match:
+                    params['intervention_batch'] = int(match.group(1))
+
+                match = re.search(r'intervention_step[=:\s]+(\d+)', line)
+                if match:
+                    params['intervention_step'] = int(match.group(1))
+
+                break
+
+    return params
+
+
+def extract_momentum_from_results(folder: Path) -> float:
+    """Extract momentum value from results.txt header (Arguments line)."""
+    params = extract_hyperparams_from_results(folder)
+    return params['momentum']
 
 
 def find_intervention_runs(results_dir: Path, experiment_type: str,
@@ -105,14 +160,18 @@ def find_intervention_runs(results_dir: Path, experiment_type: str,
 
                 # Keep the most recent run for each variant
                 if variant not in runs or run_folder.stat().st_mtime > runs[variant].folder.stat().st_mtime:
-                    momentum = extract_momentum_from_results(run_folder)
+                    params = extract_hyperparams_from_results(run_folder)
                     runs[variant] = RunInfo(
                         folder=run_folder,
                         experiment_tag=f"{experiment_name}_{experiment_type}_{variant}",
                         variant=variant,
-                        lr=lr,
-                        batch_size=batch_size,
-                        momentum=momentum,
+                        lr=params['lr'] if params['lr'] is not None else lr,
+                        batch_size=params['batch_size'] if params['batch_size'] is not None else batch_size,
+                        momentum=params['momentum'],
+                        intervention_lr=params['intervention_lr'],
+                        intervention_momentum=params['intervention_momentum'],
+                        intervention_batch=params['intervention_batch'],
+                        intervention_step=params['intervention_step'],
                     )
 
     return runs
@@ -222,28 +281,38 @@ def plot_intervention_comparison(
     # Generate dynamic labels based on experiment type
     def get_variant_label(variant: str, run: RunInfo, experiment_type: str,
                           run_a: Optional[RunInfo], run_b: Optional[RunInfo]) -> str:
-        """Generate label showing the relevant hyperparameter for this experiment type."""
+        """Generate label showing the relevant hyperparameter for this experiment type.
+
+        For Run C, uses the intervention values stored in the run itself (from results.txt),
+        falling back to Run B's values if not available.
+        """
         if experiment_type == 'lr':
             if variant == 'A':
                 return f'Run A (lr={run.lr})'
             elif variant == 'B':
                 return f'Run B (lr={run.lr})'
-            elif variant == 'C' and run_a and run_b:
-                return f'Run C (lr={run_a.lr} → {run_b.lr})'
+            elif variant == 'C':
+                start_lr = run.lr
+                end_lr = run.intervention_lr if run.intervention_lr is not None else (run_b.lr if run_b else '?')
+                return f'Run C (lr={start_lr} → {end_lr})'
         elif experiment_type == 'momentum':
             if variant == 'A':
                 return f'Run A (mom={run.momentum})'
             elif variant == 'B':
                 return f'Run B (mom={run.momentum})'
-            elif variant == 'C' and run_a and run_b:
-                return f'Run C (mom={run_a.momentum} → {run_b.momentum})'
+            elif variant == 'C':
+                start_mom = run.momentum
+                end_mom = run.intervention_momentum if run.intervention_momentum is not None else (run_b.momentum if run_b else '?')
+                return f'Run C (mom={start_mom} → {end_mom})'
         elif experiment_type == 'batch':
             if variant == 'A':
                 return f'Run A (batch={run.batch_size})'
             elif variant == 'B':
                 return f'Run B (batch={run.batch_size})'
-            elif variant == 'C' and run_a and run_b:
-                return f'Run C (batch={run_a.batch_size} → {run_b.batch_size})'
+            elif variant == 'C':
+                start_batch = run.batch_size
+                end_batch = run.intervention_batch if run.intervention_batch is not None else (run_b.batch_size if run_b else '?')
+                return f'Run C (batch={start_batch} → {end_batch})'
         # Fallback
         return f'Run {variant}'
 
@@ -389,10 +458,10 @@ def main() -> None:
         for variant, run in sorted(runs.items()):
             print(f"    {variant}: {run.folder.name}")
 
-        # Determine intervention step
+        # Determine intervention step (prefer command line arg, then from Run C's results)
         intervention_step = args.intervention_step
         if intervention_step is None and 'C' in runs:
-            intervention_step = extract_intervention_step(runs['C'])
+            intervention_step = runs['C'].intervention_step
 
         # Extract model from folder path (e.g., cifar10_mlp)
         model = ""
