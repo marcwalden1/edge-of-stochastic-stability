@@ -156,6 +156,7 @@ def plot_intervention_comparison(
     runs: dict[str, RunInfo],
     experiment_type: str,
     intervention_step: Optional[int] = None,
+    use_full_loss: bool = False,
 ) -> plt.Figure:
     """
     Plot batch_sharpness vs step for runs A, B, C on the same axes.
@@ -193,6 +194,7 @@ def plot_intervention_comparison(
                        label=r'$\frac{2}{\eta_B}(1-\beta_B)$ = ' + f'{theoretical_b:.1f}', alpha=0.7)
 
     # Plot loss curves in background (faded, on secondary axis)
+    loss_column = 'full_loss' if use_full_loss else 'batch_loss'
     for variant in ['A', 'B', 'C']:
         if variant not in runs:
             continue
@@ -201,18 +203,18 @@ def plot_intervention_comparison(
             df = load_results(run)
         except RuntimeError:
             continue
-        # Use batch_loss column (column index 2, named 'batch_loss')
-        loss_data = df[['step', 'batch_loss']].dropna()
+        loss_data = df[['step', loss_column]].dropna()
         if not loss_data.empty:
             ax2.plot(
                 loss_data['step'],
-                loss_data['batch_loss'],
+                loss_data[loss_column],
                 color=VARIANT_COLORS[variant],
-                linewidth=0.5,
-                alpha=0.3,
+                linewidth=0.5 if not use_full_loss else 1.0,
+                alpha=0.3 if not use_full_loss else 0.5,
             )
     # Add a single legend entry for loss with matching faded/thin style
-    ax2.plot([], [], color='gray', linewidth=1.0, alpha=0.5, label='Loss')
+    loss_label = 'Full Loss' if use_full_loss else 'Loss'
+    ax2.plot([], [], color='gray', linewidth=1.0, alpha=0.5, label=loss_label)
     ax2.set_ylabel('Loss', fontsize=10, alpha=0.7)
     ax2.tick_params(axis='y', labelcolor='gray')
     ax2.set_yscale('log')
@@ -344,6 +346,11 @@ def main() -> None:
         default=None,
         help='Intervention step to mark on plot (auto-detected if not specified)',
     )
+    parser.add_argument(
+        '--full-loss',
+        action='store_true',
+        help='Use full_loss (computed on entire dataset) instead of batch_loss for smoother curves',
+    )
 
     args = parser.parse_args()
 
@@ -396,7 +403,7 @@ def main() -> None:
                 model = parent_name.split('_')[1]
 
         # Generate plot
-        fig = plot_intervention_comparison(runs, exp_type, intervention_step)
+        fig = plot_intervention_comparison(runs, exp_type, intervention_step, use_full_loss=args.full_loss)
         output_path = save_figure(fig, exp_type, model)
         print(f"  Plot saved to: {output_path}")
 
