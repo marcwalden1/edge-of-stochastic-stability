@@ -229,12 +229,10 @@ class MeasurementRunner:
                 torch.cuda.empty_cache()
             optimizer.zero_grad()
 
-            lmax_max_size = 4096
+            lmax_max_size = 2048
             if str(self.device).startswith('cuda'):
                 total_memory = torch.cuda.get_device_properties(0).total_memory
                 if total_memory < 20 * 1024**3:
-                    if isinstance(self.net, CNN):
-                        lmax_max_size = 2048 + 512
                     if isinstance(self.net, ResNet):
                         lmax_max_size = 512
 

@@ -53,30 +53,8 @@ class FrequencyCalculator:
             return freq
         
         def full_batch_lambda_max_rule(ctx: MeasurementContext) -> bool:
-            """Full batch lambda max frequency rule."""
-            # Base frequency depends on batch size
-            if ctx.batch_size <= 33:
-                base_freq = 256
-            else:
-                base_freq = 64
-
-            if ctx.precise_plots:
-                base_freq = min(base_freq, 32)
-
-            
-            # Reduce frequency as training progresses
-            freq = base_freq
-            if ctx.step_number > 10_000:
-                freq *= 2
-            if ctx.step_number > 30_000:
-                freq *= 2
-            # if ctx.step_number > 100_000:
-                # freq *= 2
-            
-            
-            # Rare-measure: make much rarer
-            freq = _rare_scale(ctx, freq, heavy=True)
-
+            """Full batch lambda max frequency rule - fixed at every 1024 steps."""
+            freq = 1024
             return ctx.step_number % freq == 0
         
         def full_batch_lambda_max_early_rule(ctx: MeasurementContext) -> bool:

@@ -239,6 +239,7 @@ python training.py \
     --stop-loss 0.00001 \
     --disable-wandb \
     --batch-sharpness \
+    --lambdamax \
     --experiment-tag ${EXPERIMENT_TAG} \
     ${INTERVENTION_ARGS}
 
