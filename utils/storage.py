@@ -31,7 +31,10 @@ def initialize_folders(args, results_folder):
     
     while True:
         config_name = generate_folder_name(args)
-        runs_folder = results_folder / FOLDER_ROOT_IN_RESULTS / run_folder_name / config_name
+        if hasattr(args, 'experiment_subdir') and args.experiment_subdir:
+            runs_folder = results_folder / FOLDER_ROOT_IN_RESULTS / run_folder_name / args.experiment_subdir / config_name
+        else:
+            runs_folder = results_folder / FOLDER_ROOT_IN_RESULTS / run_folder_name / config_name
         if not runs_folder.exists():
             try:
                 runs_folder.mkdir(parents=True, exist_ok=False)

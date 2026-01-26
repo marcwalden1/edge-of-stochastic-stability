@@ -40,6 +40,7 @@
 #   --model MODEL            - Model architecture (default: mlp)
 #   --dataset DATASET        - Dataset name (default: cifar10)
 #   --experiment-name NAME   - Prefix for result folders (default: intervention)
+#   --experiment-subdir DIR  - Subdirectory for grouping experiments (e.g., experiment_1)
 #
 # Usage:
 #   # Full experiment with all required parameters
@@ -80,6 +81,7 @@ NUM_DATA=""
 MODEL="mlp"
 EXPERIMENT_NAME="intervention"
 DATASET="cifar10"
+EXPERIMENT_SUBDIR=""
 
 # Intervention values (default to baseline, set after parsing)
 INTERVENTION_LR_VALUE=""
@@ -135,6 +137,10 @@ while [[ $# -gt 0 ]]; do
             ;;
         --experiment-name)
             EXPERIMENT_NAME="$2"
+            shift 2
+            ;;
+        --experiment-subdir)
+            EXPERIMENT_SUBDIR="$2"
             shift 2
             ;;
         *)
@@ -311,7 +317,8 @@ python training.py \
     --batch-sharpness \
     --lambdamax \
     --experiment-tag ${EXPERIMENT_TAG} \
-    ${INTERVENTION_ARGS}
+    ${INTERVENTION_ARGS} \
+    ${EXPERIMENT_SUBDIR:+--experiment-subdir ${EXPERIMENT_SUBDIR}}
 
 echo "========================================"
 echo "Training completed for ${EXPERIMENT_TAG}"

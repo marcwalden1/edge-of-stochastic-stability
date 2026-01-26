@@ -1285,6 +1285,8 @@ if __name__ == '__main__':
                         help='New batch size to apply at intervention step')
     parser.add_argument('--experiment-tag', type=str, default=None,
                         help='Tag prefix for experiment folder name (e.g., intervention_lr_A)')
+    parser.add_argument('--experiment-subdir', type=str, default=None,
+                        help='Subdirectory for grouping experiments (e.g., experiment_1)')
 
     # --- Randomness Settings ---
     parser.add_argument('--dataset-seed', '--dataset_seed', type=int, default=888, help='Random seed for dataset preparation')
