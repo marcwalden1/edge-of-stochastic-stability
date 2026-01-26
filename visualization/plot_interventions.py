@@ -340,9 +340,24 @@ def plot_intervention_comparison(
                 alpha=0.8,
             )
 
+        # Plot lambda_max as dotted line
+        lambda_max = df[['step', 'lambda_max']].dropna()
+        if not lambda_max.empty:
+            ax.plot(
+                lambda_max['step'],
+                lambda_max['lambda_max'],
+                color=VARIANT_COLORS[variant],
+                linewidth=1.5,
+                linestyle=':',
+                alpha=0.8,
+            )
+
+    # Add a single legend entry for lambda_max
+    ax.plot([], [], color='gray', linewidth=1.5, linestyle=':', alpha=0.8, label=r'$\lambda_{\max}$')
+
     # Mark intervention step with vertical line
     if intervention_step is not None:
-        ax.axvline(x=intervention_step, color='black', linestyle=':',
+        ax.axvline(x=intervention_step, color='black', linestyle='-.',
                    label=f'Intervention step ({intervention_step})', linewidth=1)
 
     # Formatting
