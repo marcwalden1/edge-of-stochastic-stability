@@ -239,9 +239,8 @@ def plot_matching_stabilization(
     ax.axhline(
         y=theoretical_level,
         color='black',
-        linestyle=':',
-        linewidth=4,
-        alpha=0.7,
+        linestyle='--',
+        linewidth=2.5,
         label=r'$2/\eta_{\mathrm{eff}}$',
     )
 
