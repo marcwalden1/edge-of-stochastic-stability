@@ -13,12 +13,29 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import re
 from pathlib import Path
 from typing import Tuple
 
 import numpy as np
 import pandas as pd
 from matplotlib import pyplot as plt
+
+
+def extract_lr_from_results(run_path: Path) -> float:
+    """Extract learning rate from results.txt header."""
+    results_file = run_path / 'results.txt'
+    if not results_file.exists():
+        raise FileNotFoundError(f"No results.txt found in {run_path}")
+
+    with open(results_file, 'r') as f:
+        for line in f:
+            if 'Arguments:' in line or 'Namespace(' in line:
+                match = re.search(r'\blr[=:\s]+([\d.eE+-]+)', line)
+                if match:
+                    return float(match.group(1))
+                break
+    raise ValueError(f"Could not extract learning rate from {results_file}")
 
 
 def load_test_predictions(run_path: Path) -> Tuple[np.ndarray, np.ndarray]:
@@ -83,30 +100,82 @@ def compute_frobenius_distances(
     return pd.DataFrame(distances)
 
 
+def compute_frobenius_distances_time_aligned(
+    steps1: np.ndarray,
+    preds1: np.ndarray,
+    lr1: float,
+    steps2: np.ndarray,
+    preds2: np.ndarray,
+    lr2: float,
+) -> pd.DataFrame:
+    """Compute Frobenius distances at aligned times (t = lr × step).
+
+    Follows same matching logic as compute_trajectory_distance.py:
+    For each step s1 in run1, find s2 = round(s1 * lr1/lr2) in run2.
+    """
+    ratio = lr1 / lr2
+
+    # Create step-to-index mappings
+    step_to_idx1 = {int(step): idx for idx, step in enumerate(steps1)}
+    step_to_idx2 = {int(step): idx for idx, step in enumerate(steps2)}
+    steps2_set = set(step_to_idx2.keys())
+
+    distances = []
+    for step1, idx1 in step_to_idx1.items():
+        step2 = int(round(step1 * ratio))
+        if step2 in steps2_set:
+            idx2 = step_to_idx2[step2]
+            time = step1 * lr1  # = step2 * lr2
+
+            p1 = preds1[idx1]
+            p2 = preds2[idx2]
+            frob_dist = np.linalg.norm(p1 - p2, ord='fro')
+
+            distances.append({
+                'time': time,
+                'step_run1': step1,
+                'step_run2': step2,
+                'frobenius_distance': frob_dist
+            })
+
+    if not distances:
+        raise ValueError(
+            f"No matching step pairs found. "
+            f"ratio={ratio:.4f}, run1 has {len(steps1)} snapshots, run2 has {len(steps2)} snapshots"
+        )
+
+    return pd.DataFrame(distances).sort_values('time')
+
+
 def plot_distances(
     df: pd.DataFrame,
     run1_name: str,
     run2_name: str,
     output_path: Path = None,
+    time_aligned: bool = False,
 ) -> plt.Figure:
-    """Plot Frobenius distance vs training step.
+    """Plot Frobenius distance vs training step or continuous time.
 
     Args:
-        df: DataFrame with step and frobenius_distance columns
+        df: DataFrame with step/time and frobenius_distance columns
         run1_name: Name/label for run 1 (unused, kept for API compatibility)
         run2_name: Name/label for run 2 (unused, kept for API compatibility)
         output_path: If provided, save figure to this path
+        time_aligned: If True, use 'time' column for x-axis instead of 'step'
 
     Returns:
         matplotlib Figure object
     """
     fig, ax = plt.subplots(figsize=(10, 4.5))
 
-    ax.plot(df['step'], df['frobenius_distance'], 'b-', linewidth=1.5, alpha=0.8,
-            label='Frobenius distance')
-    ax.scatter(df['step'], df['frobenius_distance'], s=10, alpha=0.5)
+    x_col = 'time' if time_aligned else 'step'
+    x_label = 'Continuous Time (t = η × step)' if time_aligned else 'Training Step'
 
-    ax.set_xlabel('Training Step', fontsize=12)
+    ax.plot(df[x_col], df['frobenius_distance'], 'b-', linewidth=1.5, alpha=0.8,
+            label='Frobenius distance')
+    ax.scatter(df[x_col], df['frobenius_distance'], s=10, alpha=0.5)
+
+    ax.set_xlabel(x_label, fontsize=12)
     ax.set_ylabel('Frobenius Distance', fontsize=12)
     ax.set_title('Test Prediction Distance', fontsize=16)
     ax.grid(True, alpha=0.3)
@@ -155,6 +224,23 @@ def main():
         default=None,
         help='Output path for plot (default: visualization/img/test_distance.png)',
     )
+    parser.add_argument(
+        '--time-alignment',
+        action='store_true',
+        help='Align by continuous time (t = lr × step) instead of step number',
+    )
+    parser.add_argument(
+        '--lr1',
+        type=float,
+        default=None,
+        help='Learning rate for run1 (overrides auto-extraction from results.txt)',
+    )
+    parser.add_argument(
+        '--lr2',
+        type=float,
+        default=None,
+        help='Learning rate for run2 (overrides auto-extraction from results.txt)',
+    )
 
     args = parser.parse_args()
 
@@ -169,8 +255,19 @@ def main():
 
     # Compute distances
     print("Computing Frobenius distances...")
-    df = compute_frobenius_distances(steps1, preds1, steps2, preds2)
-    print(f"  Computed distances for {len(df)} common steps")
+    if args.time_alignment:
+        # Extract or use provided learning rates
+        lr1 = args.lr1 if args.lr1 is not None else extract_lr_from_results(args.run1)
+        lr2 = args.lr2 if args.lr2 is not None else extract_lr_from_results(args.run2)
+        print(f"Using time alignment: lr1={lr1}, lr2={lr2}, ratio={lr1/lr2:.4f}")
+
+        df = compute_frobenius_distances_time_aligned(
+            steps1, preds1, lr1, steps2, preds2, lr2
+        )
+        print(f"  Found {len(df)} matched time points")
+    else:
+        df = compute_frobenius_distances(steps1, preds1, steps2, preds2)
+        print(f"  Computed distances for {len(df)} common steps")
 
     # Print summary statistics
     print(f"\nDistance statistics:")
@@ -195,7 +292,7 @@ def main():
 
         run1_name = args.run1.name
         run2_name = args.run2.name
-        plot_distances(df, run1_name, run2_name, plot_output)
+        plot_distances(df, run1_name, run2_name, plot_output, time_aligned=args.time_alignment)
 
     # If no output specified, print the data
     if not args.output and not args.plot:
