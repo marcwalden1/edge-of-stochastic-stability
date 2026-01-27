@@ -211,7 +211,7 @@ def main():
         '--output', '-o',
         type=Path,
         default=None,
-        help='Output path for CSV file with distances',
+        help='Output path for CSV file (default: visualization/data/test_prediction_distance.csv)',
     )
     parser.add_argument(
         '--plot', '-p',
@@ -276,10 +276,15 @@ def main():
     print(f"  Mean: {df['frobenius_distance'].mean():.4f}")
     print(f"  Std:  {df['frobenius_distance'].std():.4f}")
 
-    # Save CSV if requested
-    if args.output:
-        df.to_csv(args.output, index=False)
-        print(f"\nDistances saved to {args.output}")
+    # Save CSV (default path if not specified)
+    csv_output = args.output
+    if csv_output is None:
+        script_dir = Path(__file__).parent
+        data_dir = script_dir / 'data'
+        data_dir.mkdir(exist_ok=True)
+        csv_output = data_dir / 'test_prediction_distance.csv'
+    df.to_csv(csv_output, index=False)
+    print(f"\nDistances saved to {csv_output}")
 
     # Generate plot if requested
     if args.plot:
@@ -293,11 +298,6 @@ def main():
         run1_name = args.run1.name
         run2_name = args.run2.name
         plot_distances(df, run1_name, run2_name, plot_output, time_aligned=args.time_alignment)
-
-    # If no output specified, print the data
-    if not args.output and not args.plot:
-        print("\nDistances by step:")
-        print(df.to_string(index=False))
 
 
 if __name__ == '__main__':
