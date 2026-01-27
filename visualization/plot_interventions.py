@@ -217,6 +217,7 @@ def plot_intervention_comparison(
     intervention_step: Optional[int] = None,
     show_mini_loss: bool = False,
     vert_color: str = 'black',
+    y_max: Optional[float] = None,
 ) -> plt.Figure:
     """
     Plot batch_sharpness vs step for runs A, B, C on the same axes.
@@ -398,9 +399,12 @@ def plot_intervention_comparison(
     # Make y-axis tick labels slightly bigger
     ax.tick_params(axis='y', labelsize=13)
 
-    # Capture data-driven y limits, then fix them so legend doesn't expand the plot
-    y_min, y_max = ax.get_ylim()
-    ax.set_ylim(bottom=0, top=y_max)
+    # Set y limits (use provided y_max or auto-detected)
+    if y_max is not None:
+        ax.set_ylim(0, y_max)
+    else:
+        _, auto_y_max = ax.get_ylim()
+        ax.set_ylim(0, auto_y_max)
 
     # Split legend: variant labels (red, purple, blue) on left, rest on right
     handles, labels = ax.get_legend_handles_labels()
@@ -507,6 +511,12 @@ def main() -> None:
         default='black',
         help='Color of the vertical intervention line (default: black)',
     )
+    parser.add_argument(
+        '--y-max',
+        type=float,
+        default=None,
+        help='Upper limit for y-axis on sharpness plot (default: auto)',
+    )
 
     args = parser.parse_args()
 
@@ -563,6 +573,7 @@ def main() -> None:
             runs, exp_type, intervention_step,
             show_mini_loss=args.mini_loss,
             vert_color=args.vert_color,
+            y_max=args.y_max,
         )
         output_path = save_figure(fig, exp_type, model)
         print(f"  Plot saved to: {output_path}")
