@@ -14,42 +14,6 @@ from torch.func import functional_call
 import time
 import os
 from scipy import stats
-import math
-
-
-# ---------------------------------------------------------------------------
-# Monte Carlo measurement cost normalization
-# ---------------------------------------------------------------------------
-# Cap batch_size and scale n_estimates to keep measurement cost roughly constant
-# across different training batch sizes.
-
-MC_BATCH_SIZE_CAP = 256  # Cap batch size used in MC sampling
-
-
-def normalize_mc_params(batch_size: int, n_estimates: int) -> tuple[int, int]:
-    """Normalize Monte Carlo parameters to keep measurement cost roughly constant.
-
-    Args:
-        batch_size: The training batch size passed to the measurement function.
-        n_estimates: The requested number of MC estimates.
-
-    Returns:
-        (effective_batch_size, effective_n_estimates): Adjusted parameters.
-            - batch_size is capped at MC_BATCH_SIZE_CAP (256).
-            - n_estimates is scaled down mildly for larger effective batch sizes
-              (sqrt scaling: batch=256 uses n_estimates, batch=64 uses n_estimates).
-    """
-    effective_batch_size = min(batch_size, MC_BATCH_SIZE_CAP)
-
-    # Mild sqrt scaling: only reduce n_estimates when effective_batch_size > 64
-    if effective_batch_size > 64:
-        scale_factor = math.sqrt(effective_batch_size / 64)
-        effective_n_estimates = max(20, int(n_estimates / scale_factor))
-    else:
-        effective_n_estimates = n_estimates
-
-    return effective_batch_size, effective_n_estimates
-
 
 __all__ = ['param_vector', 'param_length', 'flatt', 'grads_vector',
            'calculate_all_the_grads', 'compute_eigenvalues', 'compute_grad_H_grad',
@@ -746,15 +710,12 @@ def calculate_averaged_grad_H_grad(net,
         - Logs the number of estimates to wandb if available
         - eps=0.005 approximately gives 1% estimation error
     """
-    # Normalize MC parameters to keep cost roughly constant across batch sizes
-    effective_batch_size, effective_n_estimates = normalize_mc_params(batch_size, n_estimates)
-
     gHg_vals = []
     norm_g_vals = []
 
     x_vals = gHg_vals
     y_vals = norm_g_vals
-
+    
 
     # Create independent RNG using current time and process info for true randomness
     entropy_seed = int((time.time() * 1000000) % (2**32)) ^ os.getpid()
@@ -762,12 +723,12 @@ def calculate_averaged_grad_H_grad(net,
     rng.manual_seed(entropy_seed)
 
     # Clear cache once before starting MC estimation (not inside the loop)
-    if effective_batch_size > 128 and torch.cuda.is_available():
+    if batch_size > 128 and torch.cuda.is_available():
         torch.cuda.empty_cache()
 
-    for i in range(effective_n_estimates):
+    for i in range(n_estimates):
         shuffle = T.randperm(len(X), generator=rng)
-        random_idx = shuffle[:effective_batch_size]
+        random_idx = shuffle[:batch_size]
         if with_replacement:
             random_idx = T.randint(0, len(X), (batch_size,), generator=rng)
 
@@ -942,10 +903,7 @@ def calculate_gni(net,
                               batched = None,
                               compute_gHg: bool = False,
                               use_subset_of_data: int = None # use only a subset of the dataset to calculate H in GNI - speeds up computations!
-                              ):
-    # Normalize MC parameters to keep cost roughly constant across batch sizes
-    effective_batch_size, effective_n_estimates = normalize_mc_params(batch_size, n_estimates)
-
+                              ): 
     sharpnesses = []
 
     params = list(net.parameters())
@@ -970,11 +928,11 @@ def calculate_gni(net,
     gHg_list = []
 
 
-    for i in range(effective_n_estimates):
+    for i in range(n_estimates):
         rng = gimme_new_rng()
 
         shuffle = T.randperm(len(X), generator=rng)
-        random_idx = shuffle[:effective_batch_size]
+        random_idx = shuffle[:batch_size]
 
         X_batch = X[random_idx]
         Y_batch = Y[random_idx]
@@ -1205,23 +1163,20 @@ def calculate_gradient_norm_squared_mc(net,
     Returns:
         float: Monte Carlo estimate of E[||∇f_B||²]
     """
-    # Normalize MC parameters to keep cost roughly constant across batch sizes
-    effective_batch_size, effective_n_estimates = normalize_mc_params(batch_size, n_estimates)
-
     gradient_norm_squared_vals = []
-
+    
     # Create independent RNG using current time and process info for true randomness
     entropy_seed = int((time.time() * 1000000) % (2**32)) ^ os.getpid()
     rng = torch.Generator()
     rng.manual_seed(entropy_seed)
-
+    
     params = list(net.parameters())
-
-    for i in range(effective_n_estimates):
+    
+    for i in range(n_estimates):
         # Sample random mini-batch
         shuffle = T.randperm(len(X), generator=rng)
-        random_idx = shuffle[:effective_batch_size]
-
+        random_idx = shuffle[:batch_size]
+        
         X_batch = X[random_idx]
         Y_batch = Y[random_idx]
         
@@ -1299,19 +1254,16 @@ def calculate_expected_one_step_full_loss_change(net,
     Returns:
         float: Monte Carlo estimate of expected total loss change
     """
-    # Normalize MC parameters to keep cost roughly constant across batch sizes
-    effective_batch_size, effective_n_estimates = normalize_mc_params(batch_size, n_estimates)
-
     loss_changes = []
-
+    
     # Create independent RNG using current time and process info for true randomness
     entropy_seed = int((time.time() * 1000000) % (2**32)) ^ os.getpid()
     rng = torch.Generator()
     rng.manual_seed(entropy_seed)
-
+    
     # Store original parameters
     original_params = param_vector(net).detach().clone()
-
+    
     # Compute total loss before any steps (reused for efficiency)
     # with torch.no_grad():
     if eval_batch_size is None or eval_batch_size >= len(X):
@@ -1338,10 +1290,10 @@ def calculate_expected_one_step_full_loss_change(net,
     gradient_norm_squared = sum(p.grad.data.norm(2).item() ** 2 for p in net.parameters())
     eta = optimizer.param_groups[0]['lr']
 
-    for i in range(effective_n_estimates):
+    for i in range(n_estimates):
         # Sample random mini-batch for gradient step
         shuffle = T.randperm(len(X), generator=rng)
-        random_idx = shuffle[:effective_batch_size]
+        random_idx = shuffle[:batch_size]
         
         X_batch = X[random_idx]
         Y_batch = Y[random_idx]
@@ -1454,24 +1406,21 @@ def calculate_expected_one_step_batch_loss_change(net,
     Returns:
         float: Monte Carlo estimate of expected relative one-step loss change
     """
-    # Normalize MC parameters to keep cost roughly constant across batch sizes
-    effective_batch_size, effective_n_estimates = normalize_mc_params(batch_size, n_estimates)
-
     loss_changes = []
-
+    
     # Create independent RNG using current time and process info for true randomness
     entropy_seed = int((time.time() * 1000000) % (2**32)) ^ os.getpid()
     rng = torch.Generator()
     rng.manual_seed(entropy_seed)
-
+    
     # Store original parameters
     original_params = param_vector(net).detach().clone()
-
-    for i in range(effective_n_estimates):
+    
+    for i in range(n_estimates):
         # Sample random mini-batch
         shuffle = T.randperm(len(X), generator=rng)
-        random_idx = shuffle[:effective_batch_size]
-
+        random_idx = shuffle[:batch_size]
+        
         X_batch = X[random_idx]
         Y_batch = Y[random_idx]
         
