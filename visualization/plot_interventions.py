@@ -215,15 +215,18 @@ def plot_intervention_comparison(
     runs: dict[str, RunInfo],
     experiment_type: str,
     intervention_step: Optional[int] = None,
-    use_full_loss: bool = False,
+    show_mini_loss: bool = False,
+    vert_color: str = 'black',
 ) -> plt.Figure:
     """
     Plot batch_sharpness vs step for runs A, B, C on the same axes.
-    """
-    fig, ax = plt.subplots(figsize=(12, 6))
 
-    # Create secondary y-axis for loss (will be plotted in background)
-    ax2 = ax.twinx()
+    Top subplot: batch_sharpness and lambda_max
+    Bottom subplot: loss curves (full_loss always, batch_loss if show_mini_loss=True)
+    """
+    fig, (ax, ax_loss) = plt.subplots(
+        2, 1, figsize=(12, 8), height_ratios=[2, 1], sharex=True
+    )
 
     # Get Run A (baseline) parameters
     run_a = runs.get('A')
@@ -238,7 +241,7 @@ def plot_intervention_comparison(
 
     # Theoretical stabilization value for Run A: 2/η_A * (1 - β_A)
     theoretical_a = (2 / eta_a) * (1 - beta_a)
-    ax.axhline(y=theoretical_a, color='#1f77b4', linestyle='--',
+    ax.axhline(y=theoretical_a, color='#1f77b4', linestyle='--', linewidth=1.2,
                label=r'$\frac{2}{\eta_A}(1-\beta_A)$ = ' + f'{theoretical_a:.1f}', alpha=0.7)
 
     # Check if Run B has different LR or momentum from Run A
@@ -249,11 +252,10 @@ def plot_intervention_comparison(
         # Add Run B theoretical line if LR or momentum differs
         if abs(eta_b - eta_a) > 1e-8 or abs(beta_b - beta_a) > 1e-8:
             theoretical_b = (2 / eta_b) * (1 - beta_b)
-            ax.axhline(y=theoretical_b, color='#9467bd', linestyle='--',
+            ax.axhline(y=theoretical_b, color='#9467bd', linestyle='--', linewidth=1.2,
                        label=r'$\frac{2}{\eta_B}(1-\beta_B)$ = ' + f'{theoretical_b:.1f}', alpha=0.7)
 
-    # Plot loss curves in background (faded, on secondary axis)
-    loss_column = 'full_loss' if use_full_loss else 'batch_loss'
+    # Plot loss curves in bottom subplot
     for variant in ['A', 'B', 'C']:
         if variant not in runs:
             continue
@@ -262,21 +264,35 @@ def plot_intervention_comparison(
             df = load_results(run)
         except RuntimeError:
             continue
-        loss_data = df[['step', loss_column]].dropna()
-        if not loss_data.empty:
-            ax2.plot(
-                loss_data['step'],
-                loss_data[loss_column],
+        # Always plot full_loss
+        full_loss_data = df[['step', 'full_loss']].dropna()
+        if not full_loss_data.empty:
+            ax_loss.plot(
+                full_loss_data['step'],
+                full_loss_data['full_loss'],
                 color=VARIANT_COLORS[variant],
-                linewidth=0.5 if not use_full_loss else 1.0,
-                alpha=0.3 if not use_full_loss else 0.5,
+                linewidth=1.2,
+                alpha=0.8,
             )
-    # Add a single legend entry for loss with matching faded/thin style
-    loss_label = 'Full Loss' if use_full_loss else 'Loss'
-    ax2.plot([], [], color='gray', linewidth=1.0, alpha=0.5, label=loss_label)
-    ax2.set_ylabel('Loss', fontsize=10, alpha=0.7)
-    ax2.tick_params(axis='y', labelcolor='gray')
-    ax2.set_yscale('log')
+        # Optionally plot batch_loss (mini-batch loss)
+        if show_mini_loss:
+            batch_loss_data = df[['step', 'batch_loss']].dropna()
+            if not batch_loss_data.empty:
+                ax_loss.plot(
+                    batch_loss_data['step'],
+                    batch_loss_data['batch_loss'],
+                    color=VARIANT_COLORS[variant],
+                    linewidth=0.6,
+                    alpha=0.4,
+                )
+    # Add legend entries for loss types
+    ax_loss.plot([], [], color='gray', linewidth=1.2, alpha=0.8, label='Full Loss')
+    if show_mini_loss:
+        ax_loss.plot([], [], color='gray', linewidth=0.6, alpha=0.4, label='Mini-batch Loss')
+    ax_loss.set_ylabel('Loss', fontsize=14)
+    ax_loss.set_yscale('log')
+    ax_loss.grid(True, alpha=0.3)
+    ax_loss.legend(loc='upper right', fontsize=12, framealpha=0.9)
 
     # Generate dynamic labels based on experiment type
     def get_variant_label(variant: str, run: RunInfo, experiment_type: str,
@@ -336,31 +352,32 @@ def plot_intervention_comparison(
                 batch_sharp['batch_sharpness'],
                 label=label,
                 color=VARIANT_COLORS[variant],
-                linewidth=1.5,
+                linewidth=1.8,
                 alpha=0.8,
             )
 
-        # Plot lambda_max as dotted line
+        # Plot lambda_max as dotted line (extra thick for visibility)
         lambda_max = df[['step', 'lambda_max']].dropna()
         if not lambda_max.empty:
             ax.plot(
                 lambda_max['step'],
                 lambda_max['lambda_max'],
                 color=VARIANT_COLORS[variant],
-                linewidth=1.5,
+                linewidth=3.0,
                 linestyle=':',
                 alpha=0.8,
             )
 
     # Add a single legend entry for lambda_max
-    ax.plot([], [], color='gray', linewidth=1.5, linestyle=':', alpha=0.8, label=r'$\lambda_{\max}$')
+    ax.plot([], [], color='gray', linewidth=3.0, linestyle=':', alpha=0.8, label=r'$\lambda_{\max}$')
 
     # Mark intervention step with vertical line (no legend entry)
     if intervention_step is not None:
-        ax.axvline(x=intervention_step, color='black', linestyle='-.', linewidth=1)
+        ax.axvline(x=intervention_step, color=vert_color, linestyle='--', linewidth=2.0)
+        ax_loss.axvline(x=intervention_step, color=vert_color, linestyle='--', linewidth=2.0)
 
     # Formatting
-    ax.set_xlabel('Step', fontsize=18)
+    ax_loss.set_xlabel('Step', fontsize=18)
     ax.set_ylabel('Batch Sharpness', fontsize=18)
 
     type_labels = {
@@ -370,14 +387,13 @@ def plot_intervention_comparison(
     }
     ax.set_title(f'Intervening {type_labels.get(experiment_type, experiment_type)} Mid-Training',
                  fontsize=22)
-    # Combine legends from both axes
-    lines1, labels1 = ax.get_legend_handles_labels()
-    lines2, labels2 = ax2.get_legend_handles_labels()
 
     ax.set_ylim(bottom=0)
-    ax.legend(lines1 + lines2, labels1 + labels2, loc='upper right', fontsize=14, framealpha=0.9)
+    ax.legend(loc='upper right', fontsize=14, framealpha=0.9)
 
     ax.grid(True, alpha=0.3)
+
+    plt.tight_layout()
 
     return fig
 
@@ -430,9 +446,15 @@ def main() -> None:
         help='Intervention step to mark on plot (auto-detected if not specified)',
     )
     parser.add_argument(
-        '--full-loss',
+        '--mini-loss',
         action='store_true',
-        help='Use full_loss (computed on entire dataset) instead of batch_loss for smoother curves',
+        help='Also show mini-batch loss in addition to full loss',
+    )
+    parser.add_argument(
+        '--vert-color',
+        type=str,
+        default='black',
+        help='Color of the vertical intervention line (default: black)',
     )
 
     args = parser.parse_args()
@@ -486,7 +508,11 @@ def main() -> None:
                 model = parent_name.split('_')[1]
 
         # Generate plot
-        fig = plot_intervention_comparison(runs, exp_type, intervention_step, use_full_loss=args.full_loss)
+        fig = plot_intervention_comparison(
+            runs, exp_type, intervention_step,
+            show_mini_loss=args.mini_loss,
+            vert_color=args.vert_color,
+        )
         output_path = save_figure(fig, exp_type, model)
         print(f"  Plot saved to: {output_path}")
 
