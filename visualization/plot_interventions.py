@@ -295,7 +295,7 @@ def plot_intervention_comparison(
     ax_loss.set_ylabel('Loss', fontsize=14)
     ax_loss.set_yscale('log')
     ax_loss.grid(True, alpha=0.3)
-    ax_loss.legend(loc='upper right', fontsize=19, framealpha=0.9,
+    ax_loss.legend(loc='upper right', fontsize=22, framealpha=0.9,
                    prop={'weight': 'medium'})
 
     # Generate dynamic labels based on experiment type
@@ -357,7 +357,7 @@ def plot_intervention_comparison(
                 label=label,
                 color=VARIANT_COLORS[variant],
                 linewidth=1.8,
-                alpha=0.8,
+                alpha=1.0,
             )
 
         # Plot lambda_max with solid filled circle markers (no alpha for homogeneous color)
@@ -369,15 +369,15 @@ def plot_intervention_comparison(
                 color=VARIANT_COLORS[variant],
                 linestyle='',
                 marker='o',
-                markersize=4,
+                markersize=3.5,
                 markerfacecolor=VARIANT_COLORS[variant],
                 markeredgecolor=VARIANT_COLORS[variant],
             )
 
     # Add legend entries for lambda_max and batch sharpness (black)
-    ax.plot([], [], color='black', linestyle='', marker='o', markersize=4,
+    ax.plot([], [], color='black', linestyle='', marker='o', markersize=3.5,
             markerfacecolor='black', markeredgecolor='black', label=r'$\lambda_{\max}$')
-    ax.plot([], [], color='black', linewidth=1.8, alpha=0.8, label='Batch Sharpness')
+    ax.plot([], [], color='black', linewidth=1.8, alpha=1.0, label='Batch Sharpness')
 
     # Mark intervention step with vertical line (no legend entry)
     if intervention_step is not None:
@@ -437,11 +437,11 @@ def plot_intervention_comparison(
     right_labels = [right_labels[i] for i in right_order]
 
     # Create two legends positioned inside the plot area (no extra space allocation)
-    legend_left = ax.legend(left_handles, left_labels, loc='upper left', fontsize=19,
+    legend_left = ax.legend(left_handles, left_labels, loc='upper left', fontsize=22,
                             framealpha=0.9, prop={'weight': 'medium'},
                             bbox_to_anchor=(0.01, 0.99), borderaxespad=0)
     ax.add_artist(legend_left)
-    ax.legend(right_handles, right_labels, loc='upper right', fontsize=19,
+    ax.legend(right_handles, right_labels, loc='upper right', fontsize=22,
               framealpha=0.9, prop={'weight': 'medium'},
               bbox_to_anchor=(0.99, 0.99), borderaxespad=0)
 
