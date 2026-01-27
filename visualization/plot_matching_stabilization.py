@@ -240,7 +240,7 @@ def plot_matching_stabilization(
         y=theoretical_level,
         color='black',
         linestyle='--',
-        linewidth=2.5,
+        linewidth=2,
         label=r'$2/\eta_{\mathrm{eff}}$',
     )
 
