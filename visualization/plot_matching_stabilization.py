@@ -254,7 +254,7 @@ def plot_matching_stabilization(
     # Combine legends from both axes
     lines1, labels1 = ax.get_legend_handles_labels()
     lines2, labels2 = ax2.get_legend_handles_labels()
-    ax.legend(lines1 + lines2, labels1 + labels2, loc='upper right', fontsize=14, framealpha=0.9)
+    ax.legend(lines1 + lines2, labels1 + labels2, loc='center right', fontsize=13, framealpha=0.9)
 
     ax.grid(True, alpha=0.3)
     ax.set_ylim(bottom=0)
