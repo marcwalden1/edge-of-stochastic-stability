@@ -161,7 +161,7 @@ def plot_matching_stabilization(
     print(f"SGD:  eta={eta_sgd}, beta={beta_sgd}, eff_lr={eff_lr_sgd:.4f}")
 
     # Create figure
-    fig, ax = plt.subplots(figsize=(10, 6))
+    fig, ax = plt.subplots(figsize=(8, 5))
 
     # Create second y-axis for loss
     ax2 = ax.twinx()
@@ -241,7 +241,7 @@ def plot_matching_stabilization(
         color='black',
         linestyle='--',
         linewidth=2,
-        label=r'$2/\eta_{\mathrm{eff}}$',
+        label=r'$2/\eta_{\mathrm{SGD}}$',
     )
 
     # Formatting
@@ -249,7 +249,7 @@ def plot_matching_stabilization(
     ax.set_ylabel('Sharpness', fontsize=14)
     ax2.set_ylabel('Loss', fontsize=14)
     ax2.set_yscale('log')
-    ax.set_title('SGD vs SGDM at Equal Effective Learning Rate', fontsize=16)
+    ax.set_title('SGD vs SGDM at Equal Effective Learning Rate', fontsize=18)
 
     # Combine legends from both axes
     lines1, labels1 = ax.get_legend_handles_labels()
