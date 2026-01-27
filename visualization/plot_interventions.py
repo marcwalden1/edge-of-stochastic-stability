@@ -375,7 +375,7 @@ def plot_intervention_comparison(
     lines2, labels2 = ax2.get_legend_handles_labels()
 
     ax.set_ylim(bottom=0)
-    ax.legend(lines1 + lines2, labels1 + labels2, loc='upper right', fontsize=12, framealpha=0.9)
+    ax.legend(lines1 + lines2, labels1 + labels2, loc='upper right', fontsize=14, framealpha=0.9)
 
     ax.grid(True, alpha=0.3)
 
