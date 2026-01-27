@@ -46,6 +46,10 @@ GREEN_SGD = '#90EE90'   # Light green
 BLUE_SGDM = '#1f77b4'   # Standard blue
 BLUE_SGD = '#87CEEB'    # Sky blue
 
+# Two distinct grays for full loss
+GRAY_SGDM = '#505050'   # Dark gray
+GRAY_SGD = '#A0A0A0'    # Light gray
+
 
 def require_env_path(name: str) -> Path:
     """Get path from environment variable or raise error."""
@@ -159,6 +163,9 @@ def plot_matching_stabilization(
     # Create figure
     fig, ax = plt.subplots(figsize=(10, 6))
 
+    # Create second y-axis for loss
+    ax2 = ax.twinx()
+
     # Plot batch sharpness (greens)
     bs_sgdm = df_sgdm[['step', 'batch_sharpness']].dropna()
     bs_sgd = df_sgd[['step', 'batch_sharpness']].dropna()
@@ -169,7 +176,7 @@ def plot_matching_stabilization(
             bs_sgdm['batch_sharpness'],
             color=GREEN_SGDM,
             linewidth=1.5,
-            label=f'Batch Sharpness (SGDM: $\\eta$={eta_sgdm}, $\\beta$={beta_sgdm})',
+            label='Batch Sharpness (SGDM)',
         )
 
     if not bs_sgd.empty:
@@ -178,10 +185,10 @@ def plot_matching_stabilization(
             bs_sgd['batch_sharpness'],
             color=GREEN_SGD,
             linewidth=1.5,
-            label=f'Batch Sharpness (SGD: $\\eta$={eta_sgd})',
+            label='Batch Sharpness (SGD)',
         )
 
-    # Plot lambda_max (blues, dotted)
+    # Plot lambda_max (blues, continuous)
     lm_sgdm = df_sgdm[['step', 'lambda_max']].dropna()
     lm_sgd = df_sgd[['step', 'lambda_max']].dropna()
 
@@ -191,8 +198,7 @@ def plot_matching_stabilization(
             lm_sgdm['lambda_max'],
             color=BLUE_SGDM,
             linewidth=1.5,
-            linestyle=':',
-            label=f'$\\lambda_{{\\max}}$ (SGDM)',
+            label=r'$\lambda_{\max}$ (SGDM)',
         )
 
     if not lm_sgd.empty:
@@ -201,25 +207,55 @@ def plot_matching_stabilization(
             lm_sgd['lambda_max'],
             color=BLUE_SGD,
             linewidth=1.5,
-            linestyle=':',
-            label=f'$\\lambda_{{\\max}}$ (SGD)',
+            label=r'$\lambda_{\max}$ (SGD)',
+        )
+
+    # Plot full loss (grays) on secondary axis
+    fl_sgdm = df_sgdm[['step', 'full_loss']].dropna()
+    fl_sgd = df_sgd[['step', 'full_loss']].dropna()
+
+    if not fl_sgdm.empty:
+        ax2.plot(
+            fl_sgdm['step'],
+            fl_sgdm['full_loss'],
+            color=GRAY_SGDM,
+            linewidth=1.5,
+            linestyle='--',
+            label='Full Loss (SGDM)',
+        )
+
+    if not fl_sgd.empty:
+        ax2.plot(
+            fl_sgd['step'],
+            fl_sgd['full_loss'],
+            color=GRAY_SGD,
+            linewidth=1.5,
+            linestyle='--',
+            label='Full Loss (SGD)',
         )
 
     # Add theoretical stabilization line: 2/eta_eff
     theoretical_level = 2 / eff_lr_sgdm
     ax.axhline(
         y=theoretical_level,
-        color='gray',
+        color='black',
         linestyle='--',
+        linewidth=2,
         alpha=0.7,
-        label=f'$2/\\eta_{{\\mathrm{{eff}}}}$ = {theoretical_level:.1f}',
+        label=r'$2/\eta_{\mathrm{eff}}$',
     )
 
     # Formatting
-    ax.set_xlabel('Step', fontsize=12)
-    ax.set_ylabel('Sharpness', fontsize=12)
-    ax.set_title('Matching Stabilization Levels: SGDM vs SGD', fontsize=14)
-    ax.legend(loc='upper right', fontsize=9, framealpha=0.9)
+    ax.set_xlabel('Step', fontsize=14)
+    ax.set_ylabel('Sharpness', fontsize=14)
+    ax2.set_ylabel('Loss', fontsize=14)
+    ax.set_title('Matching Stabilization Levels: SGDM vs SGD', fontsize=16)
+
+    # Combine legends from both axes
+    lines1, labels1 = ax.get_legend_handles_labels()
+    lines2, labels2 = ax2.get_legend_handles_labels()
+    ax.legend(lines1 + lines2, labels1 + labels2, loc='upper right', fontsize=14, framealpha=0.9)
+
     ax.grid(True, alpha=0.3)
     ax.set_ylim(bottom=0)
 
