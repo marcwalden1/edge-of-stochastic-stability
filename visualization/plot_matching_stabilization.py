@@ -248,6 +248,7 @@ def plot_matching_stabilization(
     ax.set_xlabel('Step', fontsize=14)
     ax.set_ylabel('Sharpness', fontsize=14)
     ax2.set_ylabel('Loss', fontsize=14)
+    ax2.set_yscale('log')
     ax.set_title('SGD vs SGDM at Equal Effective Learning Rate', fontsize=16)
 
     # Combine legends from both axes
