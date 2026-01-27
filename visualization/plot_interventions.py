@@ -241,9 +241,6 @@ def plot_intervention_comparison(
     ax.axhline(y=theoretical_a, color='#1f77b4', linestyle='--',
                label=r'$\frac{2}{\eta_A}(1-\beta_A)$ = ' + f'{theoretical_a:.1f}', alpha=0.7)
 
-    # Track theoretical values for legend positioning
-    theoretical_values = [theoretical_a]
-
     # Check if Run B has different LR or momentum from Run A
     run_b = runs.get('B')
     if run_b:
@@ -254,7 +251,6 @@ def plot_intervention_comparison(
             theoretical_b = (2 / eta_b) * (1 - beta_b)
             ax.axhline(y=theoretical_b, color='#9467bd', linestyle='--',
                        label=r'$\frac{2}{\eta_B}(1-\beta_B)$ = ' + f'{theoretical_b:.1f}', alpha=0.7)
-            theoretical_values.append(theoretical_b)
 
     # Plot loss curves in background (faded, on secondary axis)
     loss_column = 'full_loss' if use_full_loss else 'batch_loss'
@@ -378,14 +374,8 @@ def plot_intervention_comparison(
     lines1, labels1 = ax.get_legend_handles_labels()
     lines2, labels2 = ax2.get_legend_handles_labels()
 
-    # Position legend with top exactly 1 unit below the lowest theoretical line
     ax.set_ylim(bottom=0)
-    ymin, ymax = ax.get_ylim()
-    lowest_theoretical = min(theoretical_values)
-    # Convert to axes fraction: (lowest_theoretical - 1) in data coords
-    legend_top_fraction = (lowest_theoretical - 1) / ymax
-    ax.legend(lines1 + lines2, labels1 + labels2, loc='upper right',
-              bbox_to_anchor=(1.0, legend_top_fraction), fontsize=14, framealpha=0.9)
+    ax.legend(lines1 + lines2, labels1 + labels2, loc='upper right', fontsize=14, framealpha=0.9)
 
     ax.grid(True, alpha=0.3)
 
