@@ -288,33 +288,33 @@ def plot_intervention_comparison(
         """
         if experiment_type == 'lr':
             if variant == 'A':
-                return f'Run A (lr={run.lr})'
+                return f'$\\eta$={run.lr}'
             elif variant == 'B':
-                return f'Run B (lr={run.lr})'
+                return f'$\\eta$={run.lr}'
             elif variant == 'C':
                 start_lr = run.lr
                 end_lr = run.intervention_lr if run.intervention_lr is not None else (run_b.lr if run_b else '?')
-                return f'Run C (lr={start_lr} → {end_lr})'
+                return f'$\\eta$={start_lr} $\\rightarrow$ {end_lr}'
         elif experiment_type == 'momentum':
             if variant == 'A':
-                return f'Run A (mom={run.momentum})'
+                return f'$\\beta$={run.momentum}'
             elif variant == 'B':
-                return f'Run B (mom={run.momentum})'
+                return f'$\\beta$={run.momentum}'
             elif variant == 'C':
                 start_mom = run.momentum
                 end_mom = run.intervention_momentum if run.intervention_momentum is not None else (run_b.momentum if run_b else '?')
-                return f'Run C (mom={start_mom} → {end_mom})'
+                return f'$\\beta$={start_mom} $\\rightarrow$ {end_mom}'
         elif experiment_type == 'batch':
             if variant == 'A':
-                return f'Run A (batch={run.batch_size})'
+                return f'$b$={run.batch_size}'
             elif variant == 'B':
-                return f'Run B (batch={run.batch_size})'
+                return f'$b$={run.batch_size}'
             elif variant == 'C':
                 start_batch = run.batch_size
                 end_batch = run.intervention_batch if run.intervention_batch is not None else (run_b.batch_size if run_b else '?')
-                return f'Run C (batch={start_batch} → {end_batch})'
+                return f'$b$={start_batch} $\\rightarrow$ {end_batch}'
         # Fallback
-        return f'Run {variant}'
+        return f'{variant}'
 
     # Plot each variant
     for variant in ['A', 'B', 'C']:
@@ -355,26 +355,25 @@ def plot_intervention_comparison(
     # Add a single legend entry for lambda_max
     ax.plot([], [], color='gray', linewidth=1.5, linestyle=':', alpha=0.8, label=r'$\lambda_{\max}$')
 
-    # Mark intervention step with vertical line
+    # Mark intervention step with vertical line (no legend entry)
     if intervention_step is not None:
-        ax.axvline(x=intervention_step, color='black', linestyle='-.',
-                   label=f'Intervention step ({intervention_step})', linewidth=1)
+        ax.axvline(x=intervention_step, color='black', linestyle='-.', linewidth=1)
 
     # Formatting
-    ax.set_xlabel('Step', fontsize=12)
-    ax.set_ylabel('Batch Sharpness', fontsize=12)
+    ax.set_xlabel('Step', fontsize=20)
+    ax.set_ylabel('Batch Sharpness', fontsize=20)
 
     type_labels = {
         'lr': 'Learning Rate',
         'momentum': 'Momentum',
         'batch': 'Batch Size',
     }
-    ax.set_title(f'{type_labels.get(experiment_type, experiment_type)} Intervention Experiment',
-                 fontsize=14)
+    ax.set_title(f'Intervening {type_labels.get(experiment_type, experiment_type)} Mid-Training',
+                 fontsize=22)
     # Combine legends from both axes
     lines1, labels1 = ax.get_legend_handles_labels()
     lines2, labels2 = ax2.get_legend_handles_labels()
-    ax.legend(lines1 + lines2, labels1 + labels2, loc='upper right', fontsize=8, framealpha=0.9)
+    ax.legend(lines1 + lines2, labels1 + labels2, loc='lower right', fontsize=20, framealpha=0.9)
     ax.grid(True, alpha=0.3)
 
     # Set y-axis to start from 0 with some headroom
