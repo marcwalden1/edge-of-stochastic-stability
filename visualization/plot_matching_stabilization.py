@@ -239,8 +239,8 @@ def plot_matching_stabilization(
     ax.axhline(
         y=theoretical_level,
         color='black',
-        linestyle='--',
-        linewidth=2,
+        linestyle=':',
+        linewidth=4,
         alpha=0.7,
         label=r'$2/\eta_{\mathrm{eff}}$',
     )
@@ -249,7 +249,7 @@ def plot_matching_stabilization(
     ax.set_xlabel('Step', fontsize=14)
     ax.set_ylabel('Sharpness', fontsize=14)
     ax2.set_ylabel('Loss', fontsize=14)
-    ax.set_title('Matching Stabilization Levels: SGDM vs SGD', fontsize=16)
+    ax.set_title('SGD vs SGDM at Equal Effective Learning Rate', fontsize=16)
 
     # Combine legends from both axes
     lines1, labels1 = ax.get_legend_handles_labels()
