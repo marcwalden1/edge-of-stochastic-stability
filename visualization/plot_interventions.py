@@ -295,8 +295,8 @@ def plot_intervention_comparison(
     ax_loss.set_ylabel('Loss', fontsize=14)
     ax_loss.set_yscale('log')
     ax_loss.grid(True, alpha=0.3)
-    ax_loss.legend(loc='upper right', fontsize=22, framealpha=0.9,
-                   prop={'weight': 'medium'})
+    ax_loss.legend(loc='upper right', framealpha=0.9,
+                   prop={'weight': 'medium', 'size': 22})
 
     # Generate dynamic labels based on experiment type
     def get_variant_label(variant: str, run: RunInfo, experiment_type: str,
@@ -437,12 +437,12 @@ def plot_intervention_comparison(
     right_labels = [right_labels[i] for i in right_order]
 
     # Create two legends positioned inside the plot area (no extra space allocation)
-    legend_left = ax.legend(left_handles, left_labels, loc='upper left', fontsize=22,
-                            framealpha=0.9, prop={'weight': 'medium'},
+    legend_left = ax.legend(left_handles, left_labels, loc='upper left',
+                            framealpha=0.9, prop={'weight': 'medium', 'size': 22},
                             bbox_to_anchor=(0.01, 0.99), borderaxespad=0)
     ax.add_artist(legend_left)
-    ax.legend(right_handles, right_labels, loc='upper right', fontsize=22,
-              framealpha=0.9, prop={'weight': 'medium'},
+    ax.legend(right_handles, right_labels, loc='upper right',
+              framealpha=0.9, prop={'weight': 'medium', 'size': 22},
               bbox_to_anchor=(0.99, 0.99), borderaxespad=0)
 
     ax.grid(True, alpha=0.3)
