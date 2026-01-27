@@ -359,7 +359,7 @@ def plot_intervention_comparison(
                 alpha=0.8,
             )
 
-        # Plot lambda_max with filled circle markers
+        # Plot lambda_max with solid filled circle markers (no alpha for homogeneous color)
         lambda_max = df[['step', 'lambda_max']].dropna()
         if not lambda_max.empty:
             ax.plot(
@@ -371,12 +371,11 @@ def plot_intervention_comparison(
                 markersize=4,
                 markerfacecolor=VARIANT_COLORS[variant],
                 markeredgecolor=VARIANT_COLORS[variant],
-                alpha=0.8,
             )
 
     # Add legend entries for lambda_max and batch sharpness (black)
     ax.plot([], [], color='black', linestyle='', marker='o', markersize=4,
-            markerfacecolor='black', markeredgecolor='black', alpha=0.8, label=r'$\lambda_{\max}$')
+            markerfacecolor='black', markeredgecolor='black', label=r'$\lambda_{\max}$')
     ax.plot([], [], color='black', linewidth=1.8, alpha=0.8, label='Batch Sharpness')
 
     # Mark intervention step with vertical line (no legend entry)
@@ -431,12 +430,14 @@ def plot_intervention_comparison(
     right_handles = [right_handles[i] for i in right_order]
     right_labels = [right_labels[i] for i in right_order]
 
-    # Create two legends positioned inside the plot area
-    legend_left = ax.legend(left_handles, left_labels, loc='upper left', fontsize=14,
-                            framealpha=0.9, prop={'weight': 'medium'})
+    # Create two legends positioned inside the plot area (no extra space allocation)
+    legend_left = ax.legend(left_handles, left_labels, loc='upper left', fontsize=16,
+                            framealpha=0.9, prop={'weight': 'medium'},
+                            bbox_to_anchor=(0.01, 0.99), borderaxespad=0)
     ax.add_artist(legend_left)
-    ax.legend(right_handles, right_labels, loc='upper right', fontsize=14,
-              framealpha=0.9, prop={'weight': 'medium'})
+    ax.legend(right_handles, right_labels, loc='upper right', fontsize=16,
+              framealpha=0.9, prop={'weight': 'medium'},
+              bbox_to_anchor=(0.99, 0.99), borderaxespad=0)
 
     ax.grid(True, alpha=0.3)
 
