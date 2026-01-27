@@ -161,7 +161,7 @@ def plot_matching_stabilization(
     print(f"SGD:  eta={eta_sgd}, beta={beta_sgd}, eff_lr={eff_lr_sgd:.4f}")
 
     # Create figure
-    fig, ax = plt.subplots(figsize=(8, 5))
+    fig, ax = plt.subplots(figsize=(10, 4.5))
 
     # Create second y-axis for loss
     ax2 = ax.twinx()
