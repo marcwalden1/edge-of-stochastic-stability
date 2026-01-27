@@ -438,7 +438,7 @@ def plot_intervention_comparison(
 
     # Create two legends positioned inside the plot area (no extra space allocation)
     legend_left = ax.legend(left_handles, left_labels, loc='upper left',
-                            framealpha=0.9, prop={'weight': 'medium', 'size': 16},
+                            framealpha=0.9, prop={'weight': 'medium', 'size': 15},
                             bbox_to_anchor=(0.01, 0.99), borderaxespad=0)
     ax.add_artist(legend_left)
     ax.legend(right_handles, right_labels, loc='upper right',
