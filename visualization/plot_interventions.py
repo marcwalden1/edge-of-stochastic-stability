@@ -364,8 +364,8 @@ def plot_intervention_comparison(
         ax.axvline(x=intervention_step, color='black', linestyle='-.', linewidth=1)
 
     # Formatting
-    ax.set_xlabel('Step', fontsize=20)
-    ax.set_ylabel('Batch Sharpness', fontsize=20)
+    ax.set_xlabel('Step', fontsize=18)
+    ax.set_ylabel('Batch Sharpness', fontsize=18)
 
     type_labels = {
         'lr': 'Learning Rate',
@@ -378,14 +378,14 @@ def plot_intervention_comparison(
     lines1, labels1 = ax.get_legend_handles_labels()
     lines2, labels2 = ax2.get_legend_handles_labels()
 
-    # Position legend with top just slightly below the lowest theoretical line
+    # Position legend with top exactly 1 unit below the lowest theoretical line
     ax.set_ylim(bottom=0)
     ymin, ymax = ax.get_ylim()
     lowest_theoretical = min(theoretical_values)
-    # Convert to axes fraction, with tiny offset below the line
-    legend_top_fraction = (lowest_theoretical / ymax) - 0.01
+    # Convert to axes fraction: (lowest_theoretical - 1) in data coords
+    legend_top_fraction = (lowest_theoretical - 1) / ymax
     ax.legend(lines1 + lines2, labels1 + labels2, loc='upper right',
-              bbox_to_anchor=(1.0, legend_top_fraction), fontsize=16, framealpha=0.9)
+              bbox_to_anchor=(1.0, legend_top_fraction), fontsize=14, framealpha=0.9)
 
     ax.grid(True, alpha=0.3)
 
