@@ -216,7 +216,7 @@ def plot_intervention_comparison(
     experiment_type: str,
     intervention_step: Optional[int] = None,
     show_mini_loss: bool = False,
-    vert_color: str = 'red',
+    vert_color: str = 'black',
 ) -> plt.Figure:
     """
     Plot batch_sharpness vs step for runs A, B, C on the same axes.
@@ -294,7 +294,7 @@ def plot_intervention_comparison(
     ax_loss.set_ylabel('Loss', fontsize=14)
     ax_loss.set_yscale('log')
     ax_loss.grid(True, alpha=0.3)
-    ax_loss.legend(loc='upper right', fontsize=12, framealpha=0.9,
+    ax_loss.legend(loc='upper right', fontsize=19, framealpha=0.9,
                    prop={'weight': 'medium'})
 
     # Generate dynamic labels based on experiment type
@@ -395,10 +395,12 @@ def plot_intervention_comparison(
     ax.set_title(f'Intervening {type_labels.get(experiment_type, experiment_type)} Mid-Training',
                  fontsize=26)
 
-    ax.set_ylim(bottom=0)
-
     # Make y-axis tick labels slightly bigger
     ax.tick_params(axis='y', labelsize=13)
+
+    # Capture data-driven y limits, then fix them so legend doesn't expand the plot
+    y_min, y_max = ax.get_ylim()
+    ax.set_ylim(bottom=0, top=y_max)
 
     # Split legend: variant labels (red, purple, blue) on left, rest on right
     handles, labels = ax.get_legend_handles_labels()
@@ -431,18 +433,18 @@ def plot_intervention_comparison(
     right_labels = [right_labels[i] for i in right_order]
 
     # Create two legends positioned inside the plot area (no extra space allocation)
-    legend_left = ax.legend(left_handles, left_labels, loc='upper left', fontsize=16,
+    legend_left = ax.legend(left_handles, left_labels, loc='upper left', fontsize=19,
                             framealpha=0.9, prop={'weight': 'medium'},
                             bbox_to_anchor=(0.01, 0.99), borderaxespad=0)
     ax.add_artist(legend_left)
-    ax.legend(right_handles, right_labels, loc='upper right', fontsize=16,
+    ax.legend(right_handles, right_labels, loc='upper right', fontsize=19,
               framealpha=0.9, prop={'weight': 'medium'},
               bbox_to_anchor=(0.99, 0.99), borderaxespad=0)
 
     ax.grid(True, alpha=0.3)
 
     plt.tight_layout()
-    plt.subplots_adjust(hspace=0.05)
+    plt.subplots_adjust(hspace=0.02)
 
     return fig
 
@@ -502,8 +504,8 @@ def main() -> None:
     parser.add_argument(
         '--vert-color',
         type=str,
-        default='red',
-        help='Color of the vertical intervention line (default: red)',
+        default='black',
+        help='Color of the vertical intervention line (default: black)',
     )
 
     args = parser.parse_args()
