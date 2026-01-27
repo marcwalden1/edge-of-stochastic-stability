@@ -93,22 +93,24 @@ def plot_distances(
 
     Args:
         df: DataFrame with step and frobenius_distance columns
-        run1_name: Name/label for run 1
-        run2_name: Name/label for run 2
+        run1_name: Name/label for run 1 (unused, kept for API compatibility)
+        run2_name: Name/label for run 2 (unused, kept for API compatibility)
         output_path: If provided, save figure to this path
 
     Returns:
         matplotlib Figure object
     """
-    fig, ax = plt.subplots(figsize=(10, 6))
+    fig, ax = plt.subplots(figsize=(10, 4.5))
 
-    ax.plot(df['step'], df['frobenius_distance'], 'b-', linewidth=1.5, alpha=0.8)
+    ax.plot(df['step'], df['frobenius_distance'], 'b-', linewidth=1.5, alpha=0.8,
+            label='Frobenius distance')
     ax.scatter(df['step'], df['frobenius_distance'], s=10, alpha=0.5)
 
     ax.set_xlabel('Training Step', fontsize=12)
     ax.set_ylabel('Frobenius Distance', fontsize=12)
-    ax.set_title(f'Test Prediction Distance\n{run1_name} vs {run2_name}', fontsize=14)
+    ax.set_title('Test Prediction Distance', fontsize=16)
     ax.grid(True, alpha=0.3)
+    ax.legend(fontsize=12)
 
     # Set y-axis to start from 0
     ax.set_ylim(bottom=0)
