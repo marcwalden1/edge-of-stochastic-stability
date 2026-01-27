@@ -359,7 +359,7 @@ def plot_intervention_comparison(
                 alpha=0.8,
             )
 
-        # Plot lambda_max with circle markers
+        # Plot lambda_max with filled circle markers
         lambda_max = df[['step', 'lambda_max']].dropna()
         if not lambda_max.empty:
             ax.plot(
@@ -369,17 +369,20 @@ def plot_intervention_comparison(
                 linestyle='',
                 marker='o',
                 markersize=4,
+                markerfacecolor=VARIANT_COLORS[variant],
+                markeredgecolor=VARIANT_COLORS[variant],
                 alpha=0.8,
             )
 
     # Add legend entries for lambda_max and batch sharpness (black)
-    ax.plot([], [], color='black', linestyle='', marker='o', markersize=4, alpha=0.8, label=r'$\lambda_{\max}$')
+    ax.plot([], [], color='black', linestyle='', marker='o', markersize=4,
+            markerfacecolor='black', markeredgecolor='black', alpha=0.8, label=r'$\lambda_{\max}$')
     ax.plot([], [], color='black', linewidth=1.8, alpha=0.8, label='Batch Sharpness')
 
     # Mark intervention step with vertical line (no legend entry)
     if intervention_step is not None:
-        ax.axvline(x=intervention_step, color=vert_color, linestyle='--', linewidth=2.0)
-        ax_loss.axvline(x=intervention_step, color=vert_color, linestyle='--', linewidth=2.0)
+        ax.axvline(x=intervention_step, color=vert_color, linestyle='-.', linewidth=2.0)
+        ax_loss.axvline(x=intervention_step, color=vert_color, linestyle='-.', linewidth=2.0)
 
     # Formatting
     ax_loss.set_xlabel('Step', fontsize=18)
@@ -394,8 +397,46 @@ def plot_intervention_comparison(
                  fontsize=26)
 
     ax.set_ylim(bottom=0)
-    ax.legend(loc='upper right', fontsize=14, framealpha=0.9,
-              prop={'weight': 'medium'})
+
+    # Make y-axis tick labels slightly bigger
+    ax.tick_params(axis='y', labelsize=13)
+
+    # Split legend: variant labels (red, purple, blue) on left, rest on right
+    handles, labels = ax.get_legend_handles_labels()
+
+    # Separate variant labels (η=, β=, b=) from other labels
+    left_handles, left_labels = [], []
+    right_handles, right_labels = [], []
+
+    for h, l in zip(handles, labels):
+        if l.startswith('$\\eta$') or l.startswith('$\\beta$') or l.startswith('$b$'):
+            left_handles.append(h)
+            left_labels.append(l)
+        else:
+            right_handles.append(h)
+            right_labels.append(l)
+
+    # Reorder left legend: red (C), purple (B), blue (A) - reverse since they were added A, B, C
+    if len(left_handles) == 3:
+        left_handles = [left_handles[2], left_handles[1], left_handles[0]]
+        left_labels = [left_labels[2], left_labels[1], left_labels[0]]
+
+    # Reorder right legend: Batch Sharpness first
+    right_order = []
+    for i, l in enumerate(right_labels):
+        if l == 'Batch Sharpness':
+            right_order.insert(0, i)
+        else:
+            right_order.append(i)
+    right_handles = [right_handles[i] for i in right_order]
+    right_labels = [right_labels[i] for i in right_order]
+
+    # Create two legends positioned inside the plot area
+    legend_left = ax.legend(left_handles, left_labels, loc='upper left', fontsize=14,
+                            framealpha=0.9, prop={'weight': 'medium'})
+    ax.add_artist(legend_left)
+    ax.legend(right_handles, right_labels, loc='upper right', fontsize=14,
+              framealpha=0.9, prop={'weight': 'medium'})
 
     ax.grid(True, alpha=0.3)
 
