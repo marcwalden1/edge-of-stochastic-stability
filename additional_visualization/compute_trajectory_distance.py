@@ -98,6 +98,7 @@ def compute_test_distances(
     lr1: Optional[float] = None,
     lr2: Optional[float] = None,
     include_init_distance: bool = False,
+    true_min: bool = False,
 ) -> pd.DataFrame:
     """
     Compute Frobenius norm distances between test predictions of two runs.
@@ -108,6 +109,7 @@ def compute_test_distances(
         lr1: Learning rate for run1 (for time alignment, auto-extracted if None)
         lr2: Learning rate for run2 (for time alignment, auto-extracted if None)
         include_init_distance: If True, also compute distance from init predictions
+        true_min: If True, compute TRUE distance (min distance to any step in run2)
 
     Returns:
         DataFrame with columns: step, test_distance, [distance_run1_init, distance_run2_init]
@@ -124,13 +126,17 @@ def compute_test_distances(
     # Create step-to-index mappings
     step_to_idx1 = {int(step): idx for idx, step in enumerate(steps1)}
     step_to_idx2 = {int(step): idx for idx, step in enumerate(steps2)}
+    steps2_list = sorted(step_to_idx2.keys())
 
-    # Determine alignment strategy
-    use_time_alignment = lr1 is not None and lr2 is not None
+    # Determine alignment strategy (only used if not true_min)
+    use_time_alignment = lr1 is not None and lr2 is not None and not true_min
 
     if use_time_alignment:
         ratio = lr1 / lr2
         print(f"Using time alignment: lr1={lr1}, lr2={lr2}, ratio={ratio:.4f}")
+
+    if true_min:
+        print("Computing TRUE test distance (min Frobenius distance to any step in run2)...")
 
     # Find step pairs to compare
     results = []
@@ -147,36 +153,70 @@ def compute_test_distances(
         print(f"Using step {init_step1} as init for run1, step {init_step2} as init for run2")
 
     print("Computing Frobenius distances...")
-    for step1, idx1 in step_to_idx1.items():
-        if use_time_alignment:
-            step2 = int(round(step1 * ratio))
-        else:
-            step2 = step1
+    sorted_steps1 = sorted(step_to_idx1.keys())
+    for i, step1 in enumerate(sorted_steps1):
+        if (i + 1) % 100 == 0 or i == 0:
+            print(f"  Processing step {i+1}/{len(sorted_steps1)} (step {step1})...")
 
-        if step2 not in steps2_set:
-            continue
-
-        idx2 = step_to_idx2[step2]
-
+        idx1 = step_to_idx1[step1]
         p1 = preds1[idx1]  # (test_size, num_classes)
-        p2 = preds2[idx2]  # (test_size, num_classes)
 
-        # Frobenius norm of the difference
-        test_dist = np.linalg.norm(p1 - p2, ord='fro')
+        if true_min:
+            # Compute distance to ALL steps in run2 and find minimum
+            min_dist = float('inf')
+            closest_step2 = None
+            closest_idx2 = None
 
-        row = {
-            'step': step1,
-            'test_distance': float(test_dist),
-        }
+            for step2 in steps2_list:
+                idx2 = step_to_idx2[step2]
+                p2 = preds2[idx2]
+                dist = np.linalg.norm(p1 - p2, ord='fro')
+                if dist < min_dist:
+                    min_dist = dist
+                    closest_step2 = step2
+                    closest_idx2 = idx2
 
-        if use_time_alignment:
-            row['step_run2'] = step2
+            row = {
+                'step': step1,
+                'true_test_distance': float(min_dist),
+                'closest_step_run2': closest_step2,
+            }
 
-        if include_init_distance:
-            row['distance_run1_init'] = float(np.linalg.norm(p1 - init_pred1, ord='fro'))
-            row['distance_run2_init'] = float(np.linalg.norm(p2 - init_pred2, ord='fro'))
+            if include_init_distance:
+                row['distance_run1_init'] = float(np.linalg.norm(p1 - init_pred1, ord='fro'))
+                p2_closest = preds2[closest_idx2]
+                row['distance_run2_init'] = float(np.linalg.norm(p2_closest - init_pred2, ord='fro'))
 
-        results.append(row)
+            results.append(row)
+        else:
+            # Regular step-aligned or time-aligned comparison
+            if use_time_alignment:
+                step2 = int(round(step1 * ratio))
+            else:
+                step2 = step1
+
+            if step2 not in steps2_set:
+                continue
+
+            idx2 = step_to_idx2[step2]
+            p2 = preds2[idx2]  # (test_size, num_classes)
+
+            # Frobenius norm of the difference
+            test_dist = np.linalg.norm(p1 - p2, ord='fro')
+
+            row = {
+                'step': step1,
+                'test_distance': float(test_dist),
+            }
+
+            if use_time_alignment:
+                row['step_run2'] = step2
+
+            if include_init_distance:
+                row['distance_run1_init'] = float(np.linalg.norm(p1 - init_pred1, ord='fro'))
+                row['distance_run2_init'] = float(np.linalg.norm(p2 - init_pred2, ord='fro'))
+
+            results.append(row)
 
     if not results:
         print("Warning: No matching steps found between runs", file=sys.stderr)
@@ -1215,6 +1255,7 @@ def main():
             lr1=args.lr1,
             lr2=args.lr2,
             include_init_distance=args.init_distance,
+            true_min=args.true_min,
         )
 
         if df.empty:
