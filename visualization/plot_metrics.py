@@ -136,6 +136,17 @@ def infer_batch_size_from_name(filename: str) -> Optional[int]:
     return int(m.group(1)) if m else None
 
 
+def load_results_txt(path: Path) -> pd.DataFrame:
+    """Load results.txt format: comment header lines starting with #, then CSV data."""
+    # Standard column names matching the comment header format
+    columns = [
+        "epoch", "step", "batch_loss", "full_loss", "lambda_max",
+        "step_sharpness", "batch_sharpness", "gni", "accuracy"
+    ]
+    df = pd.read_csv(path, comment="#", header=None, names=columns)
+    return df
+
+
 def render_folder(
     input_dir: str,
     output_dir: str,
@@ -144,46 +155,54 @@ def render_folder(
     beta: float,
     other_params: Optional[Dict] = None,
     batch_size_override: Optional[int] = None,
-    glob_pattern: str = "*.csv",
+    glob_pattern: str = "**/results.txt",
     dpi: int = 200,
 ) -> None:
     in_path = Path(input_dir)
     out_path = Path(output_dir)
     out_path.mkdir(parents=True, exist_ok=True)
 
-    csv_paths = sorted(in_path.glob(glob_pattern))
-    if not csv_paths:
-        raise FileNotFoundError(f"No CSVs found in {in_path.resolve()}")
+    data_paths = sorted(in_path.glob(glob_pattern))
+    if not data_paths:
+        raise FileNotFoundError(f"No files matching '{glob_pattern}' found in {in_path.resolve()}")
 
     other_params = other_params or {}
 
-    for csv_path in csv_paths:
-        df = pd.read_csv(csv_path)
+    for data_path in data_paths:
+        # Load based on file extension
+        if data_path.suffix == ".txt":
+            df = load_results_txt(data_path)
+        else:
+            df = pd.read_csv(data_path)
+
         if "step" in df.columns:
             df = df.sort_values("step")
 
-        bs = batch_size_override or infer_batch_size_from_name(csv_path.name)
+        # Infer batch size from parent directory name (run folder)
+        bs = batch_size_override or infer_batch_size_from_name(data_path.parent.name)
 
         fig = plot_metrics(df, eta=eta, beta=beta, batch_size=bs,
                            other_params=other_params)
 
-        out_file = out_path / f"{csv_path.stem}_plot.png"
+        # Use parent directory name for output filename since all files are results.txt
+        run_name = data_path.parent.name
+        out_file = out_path / f"{run_name}_plot.png"
         fig.savefig(out_file, dpi=dpi, bbox_inches="tight")
         plt.close(fig)
 
-    print(f"Saved {len(csv_paths)} plots to {out_path.resolve()}")
+    print(f"Saved {len(data_paths)} plots to {out_path.resolve()}")
 
 
 if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser(description="Plot training metrics from CSV files")
-    parser.add_argument("input_dir", help="Directory containing CSV files")
+    parser.add_argument("input_dir", help="Directory containing run folders with results.txt files")
     parser.add_argument("output_dir", help="Directory to save plots")
     parser.add_argument("--eta", type=float, required=True, help="Learning rate")
     parser.add_argument("--beta", type=float, required=True, help="Momentum")
     parser.add_argument("--batch-size", type=int, default=None, help="Override batch size")
-    parser.add_argument("--glob", default="*.csv", help="Glob pattern for CSV files")
+    parser.add_argument("--glob", default="**/results.txt", help="Glob pattern for data files (default: **/results.txt)")
     parser.add_argument("--dpi", type=int, default=200, help="DPI for output images")
 
     args = parser.parse_args()
