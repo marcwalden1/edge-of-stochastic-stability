@@ -143,7 +143,7 @@ def load_results_txt(path: Path) -> pd.DataFrame:
         "epoch", "step", "batch_loss", "full_loss", "lambda_max",
         "step_sharpness", "batch_sharpness", "gni", "accuracy"
     ]
-    df = pd.read_csv(path, comment="#", header=None, names=columns)
+    df = pd.read_csv(path, comment="#", header=None, names=columns, skipinitialspace=True)
     return df
 
 
