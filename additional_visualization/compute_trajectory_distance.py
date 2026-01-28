@@ -503,6 +503,7 @@ def compute_distances(
     lr2: Optional[float] = None,
     cache_dir: Optional[Path] = None,
     offline: bool = False,
+    include_init_distance: bool = False,
 ) -> Dict[int, float]:
     """
     Compute L2 distances between projected weights from two runs.
@@ -643,8 +644,34 @@ def compute_distances(
         
         if computed_count % 10 == 0:
             print(f"Computed distances for {computed_count}/{len(step_pairs)} step pairs...")
-    
-    return distances
+
+    # Compute distance from initialization if requested
+    init_distances_run1 = {}
+    init_distances_run2 = {}
+    if include_init_distance:
+        print("Computing distances from initialization...")
+        # Find init step (minimum available step) for each run
+        init_step1 = min(weights1_cache.keys()) if weights1_cache else None
+        init_step2 = min(weights2_cache.keys()) if weights2_cache else None
+
+        if init_step1 is not None and init_step2 is not None:
+            init_weights1 = weights1_cache[init_step1]
+            init_weights2 = weights2_cache[init_step2]
+            print(f"  Using step {init_step1} as init for run1, step {init_step2} as init for run2")
+
+            # Compute distance from init for each step in run1
+            for step1, weights1 in weights1_cache.items():
+                init_distances_run1[step1] = float(np.linalg.norm(weights1 - init_weights1))
+
+            # Compute distance from init for each step in run2
+            for step2, weights2 in weights2_cache.items():
+                init_distances_run2[step2] = float(np.linalg.norm(weights2 - init_weights2))
+
+            print(f"  Computed init distances for {len(init_distances_run1)} steps (run1) and {len(init_distances_run2)} steps (run2)")
+        else:
+            print("Warning: Could not find init weights for one or both runs", file=sys.stderr)
+
+    return distances, init_distances_run1, init_distances_run2
 
 
 def compute_true_distances(
@@ -878,7 +905,8 @@ def main():
     parser.add_argument('--block-size', type=int, default=1024, help='Block size for pairwise distance computation')
     parser.add_argument('--window-size', type=int, default=None, help='Sliding window size in run B per A point (limits comparisons to ~window-size points around aligned index)')
     parser.add_argument('--window-mode', type=str, choices=['step','eta'], default='step', help='Center window using matching step or equivalent step*eta (requires --lr1/--lr2 for eta)')
-    
+    parser.add_argument('--include-init-distance', action='store_true', help='Also compute distance from initialization for each run (adds distance_run1_init and distance_run2_init columns)')
+
     args = parser.parse_args()
     
     if not WANDB_AVAILABLE and not args.offline:
@@ -938,7 +966,7 @@ def main():
         return 0
     
     # Compute distances (with incremental saving)
-    distances = compute_distances(
+    distances, init_distances_run1, init_distances_run2 = compute_distances(
         args.run_id1,
         args.run_id2,
         steps=args.steps,
@@ -951,9 +979,10 @@ def main():
         lr1=args.lr1,
         lr2=args.lr2,
         cache_dir=cache_dir,
-        offline=args.offline
+        offline=args.offline,
+        include_init_distance=args.include_init_distance
     )
-    
+
     if not distances:
         print("No distances computed. Check that artifacts exist for both runs.", file=sys.stderr)
         return 1
@@ -962,17 +991,27 @@ def main():
     steps = sorted(distances.keys())
     if args.lr1 and args.lr2:
         # When matching by step*eta, include both step columns
-        df = pd.DataFrame({
+        ratio = args.lr1 / args.lr2
+        df_data = {
             'step_run1': steps,
-            'step_run2': [int(round(s * (args.lr1 / args.lr2))) for s in steps],
+            'step_run2': [int(round(s * ratio)) for s in steps],
             'weight_distance': [distances[s] for s in steps]
-        })
+        }
+        # Add init distances if computed
+        if init_distances_run1 and init_distances_run2:
+            df_data['distance_run1_init'] = [init_distances_run1.get(s, float('nan')) for s in steps]
+            df_data['distance_run2_init'] = [init_distances_run2.get(int(round(s * ratio)), float('nan')) for s in steps]
+        df = pd.DataFrame(df_data)
     else:
-        df = pd.DataFrame({
+        df_data = {
             'step': steps,
             'weight_distance': [distances[s] for s in steps]
-        })
-    # step_col_for_merge retained from earlier logic but not needed further; removed to silence lint.
+        }
+        # Add init distances if computed
+        if init_distances_run1 and init_distances_run2:
+            df_data['distance_run1_init'] = [init_distances_run1.get(s, float('nan')) for s in steps]
+            df_data['distance_run2_init'] = [init_distances_run2.get(s, float('nan')) for s in steps]
+        df = pd.DataFrame(df_data)
     
     # Try to load lambda_max for both runs
     try:
