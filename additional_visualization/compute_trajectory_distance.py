@@ -1197,7 +1197,6 @@ def main():
     parser.add_argument('--init-distance', action='store_true', help='Compute only distance from initialization for each run (outputs distance_run1_init and distance_run2_init, not distance between runs)')
     parser.add_argument('--true-min', action='store_true', help='Compute TRUE distance: for each step in run1, output the minimum distance to any step in run2')
     parser.add_argument('--test-distance', action='store_true', help='Compute test prediction distance (Frobenius norm) instead of weight distance')
-    parser.add_argument('--results-dir', type=str, default=None, help='Results directory for finding run folders (for --test-distance)')
 
     args = parser.parse_args()
     
