@@ -647,6 +647,114 @@ def compute_distances(
     return distances
 
 
+def compute_true_min_distances(
+    run_id1: str,
+    run_id2: str,
+    project: Optional[str] = None,
+    entity: Optional[str] = None,
+    wandb_dir: Optional[Path] = None,
+    cache_dir: Optional[Path] = None,
+    offline: bool = False,
+    include_init_distance: bool = False,
+) -> pd.DataFrame:
+    """
+    Compute TRUE distance: for each step in run1, find minimum distance to any step in run2.
+
+    Returns DataFrame with columns:
+    - step: step number from run1
+    - true_distance: min distance to any point in run2
+    - distance_run1_init: (optional) distance from init for run1
+    - distance_run2_init: (optional) distance from init for run2 at the closest step
+    """
+    # Discover steps
+    steps1 = sorted(get_available_steps(run_id1, project, entity, wandb_dir, offline=offline))
+    steps2 = sorted(get_available_steps(run_id2, project, entity, wandb_dir, offline=offline))
+
+    if not steps1 or not steps2:
+        print("Error: No artifacts available for one or both runs.", file=sys.stderr)
+        return pd.DataFrame()
+
+    print(f"Run 1 has {len(steps1)} steps, Run 2 has {len(steps2)} steps")
+
+    # Cache/load all artifacts for both runs
+    print("Downloading and caching artifacts for run1...")
+    cache1 = download_all_artifacts_to_cache(
+        run_id1, steps1, project, entity,
+        cache_dir / run_id1 if cache_dir else None,
+        wandb_dir=wandb_dir, offline=offline
+    )
+    print("Downloading and caching artifacts for run2...")
+    cache2 = download_all_artifacts_to_cache(
+        run_id2, steps2, project, entity,
+        cache_dir / run_id2 if cache_dir else None,
+        wandb_dir=wandb_dir, offline=offline
+    )
+
+    # Filter to steps that actually loaded
+    steps1 = [s for s in steps1 if s in cache1]
+    steps2 = [s for s in steps2 if s in cache2]
+    if not steps1 or not steps2:
+        print("Error: No artifacts loaded for one or both runs.", file=sys.stderr)
+        return pd.DataFrame()
+
+    # Stack into matrices (use float64 for numerical stability)
+    A = np.stack([cache1[s] for s in steps1]).astype(np.float64, copy=False)  # shape (n1, d)
+    B = np.stack([cache2[s] for s in steps2]).astype(np.float64, copy=False)  # shape (n2, d)
+
+    # Precompute squared norms
+    a2 = (A**2).sum(axis=1)  # (n1,)
+    b2 = (B**2).sum(axis=1)  # (n2,)
+
+    # Compute init distances if requested
+    init_distances_run1 = {}
+    init_distances_run2 = {}
+    if include_init_distance:
+        init_step1 = min(steps1)
+        init_step2 = min(steps2)
+        init_weights1 = cache1[init_step1]
+        init_weights2 = cache2[init_step2]
+        print(f"Using step {init_step1} as init for run1, step {init_step2} as init for run2")
+
+        for i, step in enumerate(steps1):
+            init_distances_run1[step] = float(np.linalg.norm(A[i] - init_weights1))
+        for i, step in enumerate(steps2):
+            init_distances_run2[step] = float(np.linalg.norm(B[i] - init_weights2))
+
+    # Compute true distance (min distance to any point in B) for each point in A
+    print("Computing TRUE distances (min distance to run2 for each step in run1)...")
+    results = []
+
+    for i, s1 in enumerate(steps1):
+        if (i + 1) % 100 == 0 or i == 0:
+            print(f"  Processing step {i+1}/{len(steps1)} (step {s1})...")
+
+        # Compute distance from A[i] to all points in B
+        # d(a, b)^2 = ||a||^2 + ||b||^2 - 2 * a.b
+        cross = B @ A[i]  # (n2,)
+        d2 = a2[i] + b2 - 2.0 * cross  # (n2,)
+        d2 = np.maximum(d2, 0.0)  # numerical stability
+        dists = np.sqrt(d2)
+
+        # Find minimum distance and which step in B it corresponds to
+        min_idx = np.argmin(dists)
+        min_dist = dists[min_idx]
+        closest_step_b = steps2[min_idx]
+
+        row = {
+            'step': s1,
+            'true_distance': float(min_dist),
+            'closest_step_run2': closest_step_b,
+        }
+
+        if include_init_distance:
+            row['distance_run1_init'] = init_distances_run1.get(s1, float('nan'))
+            row['distance_run2_init'] = init_distances_run2.get(closest_step_b, float('nan'))
+
+        results.append(row)
+
+    return pd.DataFrame(results)
+
+
 def compute_true_distances(
     run_id1: str,
     run_id2: str,
@@ -879,6 +987,7 @@ def main():
     parser.add_argument('--window-size', type=int, default=None, help='Sliding window size in run B per A point (limits comparisons to ~window-size points around aligned index)')
     parser.add_argument('--window-mode', type=str, choices=['step','eta'], default='step', help='Center window using matching step or equivalent step*eta (requires --lr1/--lr2 for eta)')
     parser.add_argument('--init-distance', action='store_true', help='Compute only distance from initialization for each run (outputs distance_run1_init and distance_run2_init, not distance between runs)')
+    parser.add_argument('--true-min', action='store_true', help='Compute TRUE distance: for each step in run1, output the minimum distance to any step in run2')
 
     args = parser.parse_args()
     
@@ -908,8 +1017,9 @@ def main():
     
     print(f"Computing distances between run {args.run_id1} and {args.run_id2}...")
 
-    # Init distance mode - only compute distance from initialization for each run
-    if args.init_distance:
+    # Init distance mode (standalone) - only compute distance from initialization for each run
+    # Skip this if --true-min is also specified (init-distance becomes a modifier for true-min)
+    if args.init_distance and not args.true_min:
         if args.output is None or args.output == f"trajectory_distances_{args.run_id1}_{args.run_id2}.csv":
             args.output = f"init_distances_{args.run_id1}_{args.run_id2}.csv"
         output_path = Path(args.output)
@@ -974,6 +1084,32 @@ def main():
         df.to_csv(output_path, index=False)
         print(f"\nSaved init distances to: {output_path}")
         print(f"Computed init distances for {len(common_steps)} steps")
+        return 0
+
+    # True-min mode: for each step in run1, compute min distance to any step in run2
+    if args.true_min:
+        if args.output is None or args.output == f"trajectory_distances_{args.run_id1}_{args.run_id2}.csv":
+            args.output = f"true_min_distances_{args.run_id1}_{args.run_id2}.csv"
+        output_path = Path(args.output)
+
+        df = compute_true_min_distances(
+            run_id1=args.run_id1,
+            run_id2=args.run_id2,
+            project=args.project,
+            entity=args.entity,
+            wandb_dir=wandb_dir,
+            cache_dir=cache_dir,
+            offline=args.offline,
+            include_init_distance=args.init_distance,
+        )
+
+        if df.empty:
+            print("No distances computed.", file=sys.stderr)
+            return 1
+
+        df.to_csv(output_path, index=False)
+        print(f"\nSaved TRUE distances to: {output_path}")
+        print(f"Computed TRUE distances for {len(df)} steps")
         return 0
 
     # True pairwise mode
