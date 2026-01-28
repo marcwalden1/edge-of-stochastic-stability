@@ -29,31 +29,58 @@ except ImportError:
 # Test Prediction Distance Helpers
 # =============================================================================
 
-def find_run_directory(run_id: str, results_dir: Optional[Path] = None) -> Optional[Path]:
+def find_run_directory(run_id_or_path: str, results_dir: Optional[Path] = None) -> Optional[Path]:
     """
     Find the results directory for a run by searching common locations.
 
+    Args:
+        run_id_or_path: Either a wandb run ID or a direct path to the run folder
+
     Searches in:
-    1. results_dir/plaintext/*/{run_id}
-    2. results_dir/*/{run_id}
-    3. results_dir/{run_id}
+    1. Direct path (if run_id_or_path is a valid directory)
+    2. results_dir/plaintext/*/{folder containing run_id}
+    3. results_dir/*/{folder containing run_id}
+    4. Wandb offline directories
     """
+    # Check if it's a direct path
+    direct_path = Path(run_id_or_path).expanduser()
+    if direct_path.is_dir() and (direct_path / "test_predictions.npz").exists():
+        return direct_path
+
     if results_dir is None:
         results_dir = Path(os.environ.get("RESULTS", "."))
     results_dir = Path(results_dir).expanduser()
 
-    # Try common patterns
-    patterns = [
-        results_dir / "plaintext" / "*" / run_id,
-        results_dir / "*" / run_id,
-        results_dir / run_id,
-    ]
+    # Search in plaintext directories for folders containing run_id
+    for search_base in [results_dir / "plaintext", results_dir]:
+        if not search_base.exists():
+            continue
+        for subdir in search_base.iterdir():
+            if subdir.is_dir():
+                # Check direct match
+                candidate = subdir / run_id_or_path
+                if candidate.is_dir() and (candidate / "test_predictions.npz").exists():
+                    return candidate
+                # Check if run_id is contained in any folder name
+                for folder in subdir.iterdir():
+                    if folder.is_dir() and run_id_or_path in folder.name:
+                        if (folder / "test_predictions.npz").exists():
+                            return folder
+                # Also check subdir itself if it matches
+                if run_id_or_path in subdir.name and (subdir / "test_predictions.npz").exists():
+                    return subdir
 
-    for pattern in patterns:
-        matches = list(pattern.parent.glob(pattern.name)) if '*' not in str(pattern.parent) else list(results_dir.glob(str(pattern.relative_to(results_dir))))
-        for match in matches:
-            if match.is_dir() and (match / "test_predictions.npz").exists():
-                return match
+    # Check wandb offline directories - they may have test_predictions.npz
+    wandb_dir = Path(os.environ.get("WANDB_DIR", results_dir))
+    for wandb_base in [wandb_dir / "wandb", wandb_dir]:
+        if not wandb_base.exists():
+            continue
+        for run_dir in wandb_base.glob(f"offline-run-*-{run_id_or_path}"):
+            files_dir = run_dir / "files"
+            if files_dir.is_dir() and (files_dir / "test_predictions.npz").exists():
+                return files_dir
+            if (run_dir / "test_predictions.npz").exists():
+                return run_dir
 
     return None
 
