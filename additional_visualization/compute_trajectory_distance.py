@@ -309,8 +309,11 @@ def download_all_artifacts_to_cache(
     
     cached_weights = {}
     missing_steps = []
-    
-    for step in steps:
+    total_steps = len(steps)
+
+    for i, step in enumerate(steps):
+        if (i + 1) % 100 == 0 or i == 0:
+            print(f"  Loading artifact {i+1}/{total_steps} (step {step})...")
         artifact_name = f"projected_weights_step_{step:06d}"
         cache_file = cache_dir / f"{artifact_name}.npy"
         # Cache first
