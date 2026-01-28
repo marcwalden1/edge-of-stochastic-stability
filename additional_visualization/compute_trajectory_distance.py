@@ -2,15 +2,17 @@
 """
 Compute weight trajectory distances between two training runs.
 Loads projected weights from wandb artifacts and computes L2 distances.
+Also supports test prediction distances (Frobenius norm).
 """
 
 import os
 import sys
 import json
+import re
 import argparse
 import tempfile
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 import numpy as np
 import pandas as pd
 from bisect import bisect_left
@@ -22,6 +24,172 @@ except ImportError:
     WANDB_AVAILABLE = False
     print("Warning: wandb not available. Cannot load artifacts.", file=sys.stderr)
 
+
+# =============================================================================
+# Test Prediction Distance Helpers
+# =============================================================================
+
+def find_run_directory(run_id: str, results_dir: Optional[Path] = None) -> Optional[Path]:
+    """
+    Find the results directory for a run by searching common locations.
+
+    Searches in:
+    1. results_dir/plaintext/*/{run_id}
+    2. results_dir/*/{run_id}
+    3. results_dir/{run_id}
+    """
+    if results_dir is None:
+        results_dir = Path(os.environ.get("RESULTS", "."))
+    results_dir = Path(results_dir).expanduser()
+
+    # Try common patterns
+    patterns = [
+        results_dir / "plaintext" / "*" / run_id,
+        results_dir / "*" / run_id,
+        results_dir / run_id,
+    ]
+
+    for pattern in patterns:
+        matches = list(pattern.parent.glob(pattern.name)) if '*' not in str(pattern.parent) else list(results_dir.glob(str(pattern.relative_to(results_dir))))
+        for match in matches:
+            if match.is_dir() and (match / "test_predictions.npz").exists():
+                return match
+
+    return None
+
+
+def load_test_predictions(run_path: Path) -> Tuple[np.ndarray, np.ndarray]:
+    """Load test predictions from .npz file.
+
+    Args:
+        run_path: Path to the run folder containing test_predictions.npz
+
+    Returns:
+        steps: array of shape (num_snapshots,) with training steps
+        predictions: array of shape (num_snapshots, test_set_size, num_classes)
+    """
+    npz_path = run_path / 'test_predictions.npz'
+    if not npz_path.exists():
+        raise FileNotFoundError(f"No test_predictions.npz found in {run_path}")
+
+    data = np.load(npz_path)
+    return data['steps'], data['predictions']
+
+
+def extract_lr_from_results(run_path: Path) -> float:
+    """Extract learning rate from results.txt header."""
+    results_file = run_path / 'results.txt'
+    if not results_file.exists():
+        raise FileNotFoundError(f"No results.txt found in {run_path}")
+
+    with open(results_file, 'r') as f:
+        for line in f:
+            if 'Arguments:' in line or 'Namespace(' in line:
+                match = re.search(r'\blr[=:\s]+([\d.eE+-]+)', line)
+                if match:
+                    return float(match.group(1))
+                break
+    raise ValueError(f"Could not extract learning rate from {results_file}")
+
+
+def compute_test_distances(
+    run_path1: Path,
+    run_path2: Path,
+    lr1: Optional[float] = None,
+    lr2: Optional[float] = None,
+    include_init_distance: bool = False,
+) -> pd.DataFrame:
+    """
+    Compute Frobenius norm distances between test predictions of two runs.
+
+    Args:
+        run_path1: Path to first run folder
+        run_path2: Path to second run folder
+        lr1: Learning rate for run1 (for time alignment, auto-extracted if None)
+        lr2: Learning rate for run2 (for time alignment, auto-extracted if None)
+        include_init_distance: If True, also compute distance from init predictions
+
+    Returns:
+        DataFrame with columns: step, test_distance, [distance_run1_init, distance_run2_init]
+    """
+    # Load predictions
+    print(f"Loading test predictions from {run_path1}...")
+    steps1, preds1 = load_test_predictions(run_path1)
+    print(f"  Found {len(steps1)} snapshots, shape {preds1.shape}")
+
+    print(f"Loading test predictions from {run_path2}...")
+    steps2, preds2 = load_test_predictions(run_path2)
+    print(f"  Found {len(steps2)} snapshots, shape {preds2.shape}")
+
+    # Create step-to-index mappings
+    step_to_idx1 = {int(step): idx for idx, step in enumerate(steps1)}
+    step_to_idx2 = {int(step): idx for idx, step in enumerate(steps2)}
+
+    # Determine alignment strategy
+    use_time_alignment = lr1 is not None and lr2 is not None
+
+    if use_time_alignment:
+        ratio = lr1 / lr2
+        print(f"Using time alignment: lr1={lr1}, lr2={lr2}, ratio={ratio:.4f}")
+
+    # Find step pairs to compare
+    results = []
+    steps2_set = set(step_to_idx2.keys())
+
+    # Get init predictions if needed
+    init_pred1 = None
+    init_pred2 = None
+    if include_init_distance:
+        init_step1 = min(step_to_idx1.keys())
+        init_step2 = min(step_to_idx2.keys())
+        init_pred1 = preds1[step_to_idx1[init_step1]]
+        init_pred2 = preds2[step_to_idx2[init_step2]]
+        print(f"Using step {init_step1} as init for run1, step {init_step2} as init for run2")
+
+    print("Computing Frobenius distances...")
+    for step1, idx1 in step_to_idx1.items():
+        if use_time_alignment:
+            step2 = int(round(step1 * ratio))
+        else:
+            step2 = step1
+
+        if step2 not in steps2_set:
+            continue
+
+        idx2 = step_to_idx2[step2]
+
+        p1 = preds1[idx1]  # (test_size, num_classes)
+        p2 = preds2[idx2]  # (test_size, num_classes)
+
+        # Frobenius norm of the difference
+        test_dist = np.linalg.norm(p1 - p2, ord='fro')
+
+        row = {
+            'step': step1,
+            'test_distance': float(test_dist),
+        }
+
+        if use_time_alignment:
+            row['step_run2'] = step2
+
+        if include_init_distance:
+            row['distance_run1_init'] = float(np.linalg.norm(p1 - init_pred1, ord='fro'))
+            row['distance_run2_init'] = float(np.linalg.norm(p2 - init_pred2, ord='fro'))
+
+        results.append(row)
+
+    if not results:
+        print("Warning: No matching steps found between runs", file=sys.stderr)
+        return pd.DataFrame()
+
+    df = pd.DataFrame(results).sort_values('step')
+    print(f"Computed distances for {len(df)} step pairs")
+    return df
+
+
+# =============================================================================
+# Projected Weights Distance Helpers
+# =============================================================================
 
 def find_offline_run_directory(run_id: str, wandb_dir: Optional[Path] = None) -> Optional[Path]:
     """
@@ -988,10 +1156,12 @@ def main():
     parser.add_argument('--window-mode', type=str, choices=['step','eta'], default='step', help='Center window using matching step or equivalent step*eta (requires --lr1/--lr2 for eta)')
     parser.add_argument('--init-distance', action='store_true', help='Compute only distance from initialization for each run (outputs distance_run1_init and distance_run2_init, not distance between runs)')
     parser.add_argument('--true-min', action='store_true', help='Compute TRUE distance: for each step in run1, output the minimum distance to any step in run2')
+    parser.add_argument('--test-distance', action='store_true', help='Compute test prediction distance (Frobenius norm) instead of weight distance')
+    parser.add_argument('--results-dir', type=str, default=None, help='Results directory for finding run folders (for --test-distance)')
 
     args = parser.parse_args()
     
-    if not WANDB_AVAILABLE and not args.offline:
+    if not WANDB_AVAILABLE and not args.offline and not args.test_distance:
         print("Error: wandb library not available. Re-run with --offline to use filesystem-only mode.", file=sys.stderr)
         return 1
     
@@ -1017,9 +1187,48 @@ def main():
     
     print(f"Computing distances between run {args.run_id1} and {args.run_id2}...")
 
+    results_dir = Path(args.results_dir).expanduser() if args.results_dir else None
+
+    # Test distance mode - compute Frobenius norm between test predictions
+    if args.test_distance:
+        if args.output is None or args.output == f"trajectory_distances_{args.run_id1}_{args.run_id2}.csv":
+            args.output = f"test_distances_{args.run_id1}_{args.run_id2}.csv"
+        output_path = Path(args.output)
+
+        # Find run directories
+        run_path1 = find_run_directory(args.run_id1, results_dir)
+        run_path2 = find_run_directory(args.run_id2, results_dir)
+
+        if run_path1 is None:
+            print(f"Error: Could not find run directory for {args.run_id1}", file=sys.stderr)
+            return 1
+        if run_path2 is None:
+            print(f"Error: Could not find run directory for {args.run_id2}", file=sys.stderr)
+            return 1
+
+        print(f"Found run1 at: {run_path1}")
+        print(f"Found run2 at: {run_path2}")
+
+        df = compute_test_distances(
+            run_path1=run_path1,
+            run_path2=run_path2,
+            lr1=args.lr1,
+            lr2=args.lr2,
+            include_init_distance=args.init_distance,
+        )
+
+        if df.empty:
+            print("No distances computed.", file=sys.stderr)
+            return 1
+
+        df.to_csv(output_path, index=False)
+        print(f"\nSaved test distances to: {output_path}")
+        print(f"Computed test distances for {len(df)} steps")
+        return 0
+
     # Init distance mode (standalone) - only compute distance from initialization for each run
-    # Skip this if --true-min is also specified (init-distance becomes a modifier for true-min)
-    if args.init_distance and not args.true_min:
+    # Skip this if --true-min or --test-distance is also specified (init-distance becomes a modifier)
+    if args.init_distance and not args.true_min and not args.test_distance:
         if args.output is None or args.output == f"trajectory_distances_{args.run_id1}_{args.run_id2}.csv":
             args.output = f"init_distances_{args.run_id1}_{args.run_id2}.csv"
         output_path = Path(args.output)
