@@ -151,8 +151,8 @@ def render_folder(
     input_dir: str,
     output_dir: str,
     *,
-    eta: float,
-    beta: float,
+    eta: Optional[float] = None,
+    beta: Optional[float] = None,
     other_params: Optional[Dict] = None,
     batch_size_override: Optional[int] = None,
     glob_pattern: str = "**/results.txt",
@@ -199,8 +199,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Plot training metrics from CSV files")
     parser.add_argument("input_dir", help="Directory containing run folders with results.txt files")
     parser.add_argument("output_dir", help="Directory to save plots")
-    parser.add_argument("--eta", type=float, required=True, help="Learning rate")
-    parser.add_argument("--beta", type=float, required=True, help="Momentum")
+    parser.add_argument("--eta", type=float, default=None, help="Learning rate (optional, for stability bounds)")
+    parser.add_argument("--beta", type=float, default=None, help="Momentum (optional, for stability bounds)")
     parser.add_argument("--batch-size", type=int, default=None, help="Override batch size")
     parser.add_argument("--glob", default="**/results.txt", help="Glob pattern for data files (default: **/results.txt)")
     parser.add_argument("--dpi", type=int, default=200, help="DPI for output images")
