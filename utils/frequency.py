@@ -53,8 +53,8 @@ class FrequencyCalculator:
             return freq
         
         def full_batch_lambda_max_rule(ctx: MeasurementContext) -> bool:
-            """Full batch lambda max frequency rule - fixed at every 1024 steps."""
-            freq = 1024
+            """Full batch lambda max frequency rule - fixed at every 256 steps."""
+            freq = 256
             return ctx.step_number % freq == 0
         
         def full_batch_lambda_max_early_rule(ctx: MeasurementContext) -> bool:
@@ -116,19 +116,8 @@ class FrequencyCalculator:
         
         def batch_sharpness_rule(ctx: MeasurementContext) -> bool:
             """Batch sharpness frequency rule (expected Rayleigh quotient)."""
-            if ctx.batch_size < 33:
-                base_freq = 128
-            else:
-                base_freq = 32
-            
-            freq = base_freq
-            if ctx.step_number > 10_000:
-                freq *= 2
-            if ctx.step_number > 50_000:
-                freq *= 2
-            if ctx.step_number > 100_000:
-                freq *= 2
-                
+            freq = 256
+
             # Preferred batch sharpness; light sparsification only
             freq = _rare_scale(ctx, freq, heavy=False)
             return ctx.step_number % freq == 0
