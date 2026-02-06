@@ -1201,6 +1201,124 @@ def load_lambda_max_from_results(run_id: str, results_root: Optional[Path] = Non
     raise FileNotFoundError(f"Could not find results.txt for run {run_id}")
 
 
+def compute_init_distance_single_run(
+    run_id_or_path: str,
+    distance_type: str = 'l2',
+    project: Optional[str] = None,
+    wandb_dir: Optional[Path] = None,
+    cache_dir: Optional[Path] = None,
+    offline: bool = False,
+    results_dir: Optional[Path] = None,
+) -> pd.DataFrame:
+    """
+    Compute distance from initialization within a single run.
+
+    For L2 distance: computes ||w(t) - w(0)||_2 using projected weights.
+    For test distance: computes ||f(t) - f(0)||_F using test predictions.
+
+    Parameters:
+    -----------
+    run_id_or_path : str
+        Wandb run ID or path to the run folder
+    distance_type : str
+        'l2' for weight distance or 'test' for test prediction distance
+    project : str, optional
+        Wandb project name
+    wandb_dir : Path, optional
+        Base wandb directory for offline runs
+    cache_dir : Path, optional
+        Directory to cache artifacts
+    offline : bool
+        Force offline mode (skip wandb API)
+    results_dir : Path, optional
+        Results directory for finding run folders (used for test distance)
+
+    Returns:
+    --------
+    pd.DataFrame
+        DataFrame with columns: step, distance_from_init
+    """
+    if distance_type == 'l2':
+        # L2 weight distance from initialization
+        run_id = run_id_or_path
+
+        # Get available steps
+        steps = sorted(get_available_steps(
+            run_id, project, None, wandb_dir, offline=offline
+        ))
+
+        if not steps:
+            print(f"Warning: No steps found for run {run_id}", file=sys.stderr)
+            return pd.DataFrame()
+
+        # Download all artifacts
+        weights_cache = download_all_artifacts_to_cache(
+            run_id, steps, project, None,
+            cache_dir / run_id if cache_dir else None,
+            wandb_dir=wandb_dir,
+            offline=offline
+        )
+
+        if not weights_cache:
+            print(f"Warning: No weights loaded for run {run_id}", file=sys.stderr)
+            return pd.DataFrame()
+
+        # Find init step (minimum available step)
+        init_step = min(weights_cache.keys())
+        init_weights = weights_cache[init_step]
+        print(f"Using step {init_step} as initialization")
+
+        # Compute distance from init for each step
+        results = []
+        for step in sorted(weights_cache.keys()):
+            weights = weights_cache[step]
+            distance = float(np.linalg.norm(weights - init_weights))
+            results.append({
+                'step': step,
+                'distance_from_init': distance
+            })
+
+        return pd.DataFrame(results)
+
+    elif distance_type == 'test':
+        # Test prediction distance from initialization
+        run_path = find_run_directory(run_id_or_path, results_dir)
+
+        if run_path is None:
+            print(f"Warning: Could not find run directory for {run_id_or_path}",
+                  file=sys.stderr)
+            return pd.DataFrame()
+
+        # Load test predictions
+        steps, predictions = load_test_predictions(run_path)
+
+        if len(steps) == 0:
+            print(f"Warning: No test predictions found in {run_path}",
+                  file=sys.stderr)
+            return pd.DataFrame()
+
+        # Find init step (minimum step)
+        init_idx = 0  # First entry is usually init
+        init_step = int(steps[init_idx])
+        init_pred = predictions[init_idx]
+        print(f"Using step {init_step} as initialization")
+
+        # Compute Frobenius norm distance from init for each step
+        results = []
+        for i, step in enumerate(steps):
+            pred = predictions[i]
+            distance = float(np.linalg.norm(pred - init_pred, ord='fro'))
+            results.append({
+                'step': int(step),
+                'distance_from_init': distance
+            })
+
+        return pd.DataFrame(results)
+
+    else:
+        raise ValueError(f"Unknown distance_type: {distance_type}. Use 'l2' or 'test'.")
+
+
 def main():
     parser = argparse.ArgumentParser(description='Compute trajectory distances between two runs')
     parser.add_argument('run_id1', type=str, help='First run ID')
