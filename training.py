@@ -1205,6 +1205,7 @@ if __name__ == '__main__':
     # --- Optimizer Variants ---
     parser.add_argument('--momentum', type=float, default=None, help='Momentum for SGD optimizer')
     parser.add_argument('--adam', action='store_true', help='If set, use Adam optimizer instead of SGD')
+    parser.add_argument('--rmsprop', action='store_true', help='If set, use RMSProp optimizer instead of SGD')
     parser.add_argument('--nesterov', action='store_true', help='Use Nesterov momentum with SGD (requires --momentum > 0)')
     parser.add_argument('--momentum-warmup', '--momentum_warmup', action='store_true', 
                        help='If set, use momentum=0 for first N steps, then switch to target momentum (requires --momentum)')
@@ -1329,13 +1330,19 @@ if __name__ == '__main__':
     if args.momentum is not None and args.adam:
         raise ValueError("You should provide either momentum or adam, not both")
 
+    if args.adam and args.rmsprop:
+        raise ValueError("You should provide either --adam or --rmsprop, not both")
+
+    if args.momentum is not None and args.rmsprop:
+        raise ValueError("You should provide either --momentum or --rmsprop, not both")
+
     if args.momentum is not None and args.momentum < 1e-4 and not args.adam:
         args.momentum = None  # if momentum is too small, just use SGD without momentum
 
     # Nesterov validation: only valid for SGD with positive momentum
     if args.nesterov:
-        if args.adam:
-            raise ValueError("Nesterov is only supported for SGD, not Adam")
+        if args.adam or args.rmsprop:
+            raise ValueError("Nesterov is only supported for SGD, not Adam/RMSProp")
         if args.momentum is None or args.momentum <= 0:
             raise ValueError("Nesterov requires --momentum > 0 with SGD")
     
@@ -1365,8 +1372,8 @@ if __name__ == '__main__':
             raise ValueError("Gradient projection requires both --proj-switch-step and --proj-top-l")
         if args.proj_top_l < 1:
             raise ValueError("--proj-top-l must be a positive integer")
-        if args.adam or (args.momentum is not None and args.momentum != 0):
-            raise ValueError("Gradient projection currently supports only plain SGD (no momentum/Adam)")
+        if args.adam or args.rmsprop or (args.momentum is not None and args.momentum != 0):
+            raise ValueError("Gradient projection currently supports only plain SGD (no momentum/Adam/RMSProp)")
     
     # Validate wandb continuation arguments
     if (args.cont_run_id is not None) != (args.cont_step is not None):
@@ -1453,9 +1460,9 @@ if __name__ == '__main__':
             raise FileNotFoundError(f"No suitable checkpoint found for step {args.cont_step} in run {args.cont_run_id}")
         
         
-        if args.adam:
+        if args.adam or args.rmsprop:
             # loaded_data = load_checkpoint_wandb(checkpoint_info, net, optimizer)
-            raise ValueError("Cannot continue from wandb checkpoint with Adam optimizer (only SGD is supported). With Adam need to also keep the state, which is not implemented yet")
+            raise ValueError("Cannot continue from wandb checkpoint with Adam/RMSProp optimizer (only SGD is supported). These optimizers need to also keep the state, which is not implemented yet")
         
         loaded_data = load_checkpoint_wandb(checkpoint_info, net)
         step_to_start = loaded_data['step']
@@ -1496,7 +1503,7 @@ if __name__ == '__main__':
         # param_reference = {k: v.to(device) for k, v in param_reference.items()}
 
     # ----- Optimizer Preparation -----
-    optimizer = prepare_optimizer(net, args.lr, args.momentum, args.adam, args.nesterov)
+    optimizer = prepare_optimizer(net, args.lr, args.momentum, args.adam, args.nesterov, rmsprop=args.rmsprop)
 
     # ----- Checkpoint Cadence Determination -----
     if args.checkpoint_every is not None:
