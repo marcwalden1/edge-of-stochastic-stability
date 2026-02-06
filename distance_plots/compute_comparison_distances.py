@@ -102,74 +102,73 @@ def merge_all_distances(
     df_test_init_run2: pd.DataFrame,
 ) -> pd.DataFrame:
     """Merge all distance DataFrames on the step column."""
-    # Start with L2 distance
-    result = df_l2.copy()
-    if 'weight_distance' in result.columns:
-        result = result.rename(columns={'weight_distance': 'l2_distance'})
+    # Collect all non-empty DataFrames with their column mappings
+    dfs_to_merge = []
 
-    # Merge L2 TRUE min
-    if not df_l2_true.empty:
-        df_l2_true = df_l2_true.rename(columns={'true_distance': 'l2_true_min'})
-        result = result.merge(
-            df_l2_true[['step', 'l2_true_min']],
-            on='step',
-            how='outer'
-        )
+    # L2 distance between runs
+    if not df_l2.empty and 'step' in df_l2.columns:
+        df = df_l2[['step']].copy()
+        if 'weight_distance' in df_l2.columns:
+            df['l2_distance'] = df_l2['weight_distance'].values
+        dfs_to_merge.append(df)
 
-    # Merge test distance
-    if not df_test.empty:
-        result = result.merge(
-            df_test[['step', 'test_distance']],
-            on='step',
-            how='outer'
-        )
+    # L2 TRUE min distance
+    if not df_l2_true.empty and 'step' in df_l2_true.columns:
+        df = df_l2_true[['step']].copy()
+        if 'true_distance' in df_l2_true.columns:
+            df['l2_true_min'] = df_l2_true['true_distance'].values
+        dfs_to_merge.append(df)
 
-    # Merge test TRUE min
-    if not df_test_true.empty:
-        df_test_true = df_test_true.rename(columns={'true_test_distance': 'test_true_min'})
-        result = result.merge(
-            df_test_true[['step', 'test_true_min']],
-            on='step',
-            how='outer'
-        )
+    # Test distance between runs
+    if not df_test.empty and 'step' in df_test.columns:
+        df = df_test[['step']].copy()
+        if 'test_distance' in df_test.columns:
+            df['test_distance'] = df_test['test_distance'].values
+        dfs_to_merge.append(df)
 
-    # Merge L2 init distances
-    if not df_l2_init_run1.empty:
-        result = result.merge(
-            df_l2_init_run1[['step', 'distance_from_init']].rename(
-                columns={'distance_from_init': 'l2_init_run1'}
-            ),
-            on='step',
-            how='outer'
-        )
+    # Test TRUE min distance
+    if not df_test_true.empty and 'step' in df_test_true.columns:
+        df = df_test_true[['step']].copy()
+        if 'true_test_distance' in df_test_true.columns:
+            df['test_true_min'] = df_test_true['true_test_distance'].values
+        dfs_to_merge.append(df)
 
-    if not df_l2_init_run2.empty:
-        result = result.merge(
-            df_l2_init_run2[['step', 'distance_from_init']].rename(
-                columns={'distance_from_init': 'l2_init_run2'}
-            ),
-            on='step',
-            how='outer'
-        )
+    # L2 init distance run1
+    if not df_l2_init_run1.empty and 'step' in df_l2_init_run1.columns:
+        df = df_l2_init_run1[['step']].copy()
+        if 'distance_from_init' in df_l2_init_run1.columns:
+            df['l2_init_run1'] = df_l2_init_run1['distance_from_init'].values
+        dfs_to_merge.append(df)
 
-    # Merge test init distances
-    if not df_test_init_run1.empty:
-        result = result.merge(
-            df_test_init_run1[['step', 'distance_from_init']].rename(
-                columns={'distance_from_init': 'test_init_run1'}
-            ),
-            on='step',
-            how='outer'
-        )
+    # L2 init distance run2
+    if not df_l2_init_run2.empty and 'step' in df_l2_init_run2.columns:
+        df = df_l2_init_run2[['step']].copy()
+        if 'distance_from_init' in df_l2_init_run2.columns:
+            df['l2_init_run2'] = df_l2_init_run2['distance_from_init'].values
+        dfs_to_merge.append(df)
 
-    if not df_test_init_run2.empty:
-        result = result.merge(
-            df_test_init_run2[['step', 'distance_from_init']].rename(
-                columns={'distance_from_init': 'test_init_run2'}
-            ),
-            on='step',
-            how='outer'
-        )
+    # Test init distance run1
+    if not df_test_init_run1.empty and 'step' in df_test_init_run1.columns:
+        df = df_test_init_run1[['step']].copy()
+        if 'distance_from_init' in df_test_init_run1.columns:
+            df['test_init_run1'] = df_test_init_run1['distance_from_init'].values
+        dfs_to_merge.append(df)
+
+    # Test init distance run2
+    if not df_test_init_run2.empty and 'step' in df_test_init_run2.columns:
+        df = df_test_init_run2[['step']].copy()
+        if 'distance_from_init' in df_test_init_run2.columns:
+            df['test_init_run2'] = df_test_init_run2['distance_from_init'].values
+        dfs_to_merge.append(df)
+
+    # If no DataFrames to merge, return empty
+    if not dfs_to_merge:
+        return pd.DataFrame()
+
+    # Start with the first DataFrame and merge the rest
+    result = dfs_to_merge[0]
+    for df in dfs_to_merge[1:]:
+        result = result.merge(df, on='step', how='outer')
 
     return result.sort_values('step')
 
