@@ -193,6 +193,10 @@ def main():
                        help='Directory to cache artifacts')
     parser.add_argument('--results-dir', type=str, default=None,
                        help='Results directory for finding run folders')
+    parser.add_argument('--run-id1', type=str, default=None,
+                       help='Wandb run ID for run1 (for L2 distance, if auto-detection fails)')
+    parser.add_argument('--run-id2', type=str, default=None,
+                       help='Wandb run ID for run2 (for L2 distance, if auto-detection fails)')
 
     args = parser.parse_args()
 
@@ -225,8 +229,15 @@ def main():
     print("=" * 60)
 
     # Extract run IDs for L2 weight distance computation
-    run_id1 = extract_run_id_from_path(run1_path)
-    run_id2 = extract_run_id_from_path(run2_path)
+    # Use provided run IDs if given, otherwise try to extract from path
+    if args.run_id1:
+        run_id1 = args.run_id1
+    else:
+        run_id1 = extract_run_id_from_path(run1_path)
+    if args.run_id2:
+        run_id2 = args.run_id2
+    else:
+        run_id2 = extract_run_id_from_path(run2_path)
     print(f"Run ID 1: {run_id1}")
     print(f"Run ID 2: {run_id2}")
 
