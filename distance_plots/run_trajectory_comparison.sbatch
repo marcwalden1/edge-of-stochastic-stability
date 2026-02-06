@@ -26,6 +26,7 @@
 #   --eta2 LR             - Learning rate for Run 2 (default: 0.0025)
 #   --beta2 M             - Momentum for Run 2 (default: 0.5)
 #   --batch B             - Batch size for both runs (default: 8)
+#   --num-data N          - Number of training data points (default: 8192)
 #   --steps STEPS         - Training steps (REQUIRED)
 #   --model MODEL         - Model architecture (default: mlp)
 #   --experiment-name NAME - Base name for outputs (default: traj_compare)
@@ -45,6 +46,7 @@ BETA1="0.0"
 ETA2="0.0025"
 BETA2="0.5"
 BATCH="8"
+NUM_DATA="8192"
 
 # Required arguments
 STEPS=""
@@ -75,6 +77,10 @@ while [[ $# -gt 0 ]]; do
             ;;
         --batch)
             BATCH="$2"
+            shift 2
+            ;;
+        --num-data)
+            NUM_DATA="$2"
             shift 2
             ;;
         --steps)
@@ -114,6 +120,7 @@ echo "Trajectory Comparison Experiment"
 echo "========================================"
 echo "Array Task ID: ${SLURM_ARRAY_TASK_ID}"
 echo "Model: ${MODEL}"
+echo "Num Data: ${NUM_DATA}"
 echo "Batch Size: ${BATCH}"
 echo "Total Steps: ${STEPS}"
 echo "Run 1: eta=${ETA1}, beta=${BETA1}"
@@ -161,7 +168,7 @@ python training.py \
     ${MOMENTUM_ARG} \
     --batch ${BATCH} \
     --steps ${STEPS} \
-    --num-data 8192 \
+    --num-data ${NUM_DATA} \
     --activation silu \
     --init-scale 0.2 \
     --dataset-seed 111 \
