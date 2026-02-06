@@ -41,6 +41,7 @@ def plot_trajectory_comparison(
     run2_label: str = "Run 2",
     lr1: float = None,
     lr2: float = None,
+    extra_plots: bool = True,
 ):
     """
     Create 2-panel trajectory comparison plot.
@@ -59,6 +60,9 @@ def plot_trajectory_comparison(
         Learning rate for Run 1 (for time axis scaling)
     lr2 : float, optional
         Learning rate for Run 2 (for time axis scaling)
+    extra_plots : bool
+        If True, plot TRUE min and init distances. If False, only plot
+        distance between runs. Default True.
     """
     fig, axes = plt.subplots(1, 2, figsize=(14, 5))
 
@@ -91,22 +95,22 @@ def plot_trajectory_comparison(
                    '-', linewidth=2, color=color_between, alpha=0.8,
                    label=f'{run1_label} vs {run2_label}')
 
-    # L2 TRUE min distance
-    if 'l2_true_min' in df.columns:
+    # L2 TRUE min distance (only if extra_plots enabled)
+    if extra_plots and 'l2_true_min' in df.columns:
         mask = df['l2_true_min'].notna()
         ax_l2.plot(x[mask], df.loc[mask, 'l2_true_min'],
                    '--', linewidth=2, color=color_between, alpha=0.8,
                    label=f'{run1_label} vs {run2_label} (TRUE min)')
 
-    # L2 distance from init (Run1)
-    if 'l2_init_run1' in df.columns:
+    # L2 distance from init (Run1) (only if extra_plots enabled)
+    if extra_plots and 'l2_init_run1' in df.columns:
         mask = df['l2_init_run1'].notna()
         ax_l2.plot(x[mask], df.loc[mask, 'l2_init_run1'],
                    '-', linewidth=2, color=color_run1, alpha=0.8,
                    label=f'{run1_label} from init')
 
-    # L2 distance from init (Run2)
-    if 'l2_init_run2' in df.columns:
+    # L2 distance from init (Run2) (only if extra_plots enabled)
+    if extra_plots and 'l2_init_run2' in df.columns:
         mask = df['l2_init_run2'].notna()
         ax_l2.plot(x[mask], df.loc[mask, 'l2_init_run2'],
                    '-', linewidth=2, color=color_run2, alpha=0.8,
@@ -130,22 +134,22 @@ def plot_trajectory_comparison(
                      '-', linewidth=2, color=color_between, alpha=0.8,
                      label=f'{run1_label} vs {run2_label}')
 
-    # Test TRUE min distance
-    if 'test_true_min' in df.columns:
+    # Test TRUE min distance (only if extra_plots enabled)
+    if extra_plots and 'test_true_min' in df.columns:
         mask = df['test_true_min'].notna()
         ax_test.plot(x[mask], df.loc[mask, 'test_true_min'],
                      '--', linewidth=2, color=color_between, alpha=0.8,
                      label=f'{run1_label} vs {run2_label} (TRUE min)')
 
-    # Test distance from init (Run1)
-    if 'test_init_run1' in df.columns:
+    # Test distance from init (Run1) (only if extra_plots enabled)
+    if extra_plots and 'test_init_run1' in df.columns:
         mask = df['test_init_run1'].notna()
         ax_test.plot(x[mask], df.loc[mask, 'test_init_run1'],
                      '-', linewidth=2, color=color_run1, alpha=0.8,
                      label=f'{run1_label} from init')
 
-    # Test distance from init (Run2)
-    if 'test_init_run2' in df.columns:
+    # Test distance from init (Run2) (only if extra_plots enabled)
+    if extra_plots and 'test_init_run2' in df.columns:
         mask = df['test_init_run2'].notna()
         ax_test.plot(x[mask], df.loc[mask, 'test_init_run2'],
                      '-', linewidth=2, color=color_run2, alpha=0.8,
@@ -188,6 +192,10 @@ def main():
                        help='Learning rate for Run 1 (for time axis)')
     parser.add_argument('--lr2', type=float, default=None,
                        help='Learning rate for Run 2 (for time axis)')
+    parser.add_argument('--extra-plots', action='store_true', default=None,
+                       help='Include TRUE min and init distance curves (default: auto based on lr1/lr2)')
+    parser.add_argument('--no-extra-plots', action='store_true',
+                       help='Only plot distance between runs (no TRUE min or init distances)')
 
     args = parser.parse_args()
 
@@ -230,6 +238,20 @@ def main():
     if args.run2_label is None:
         args.run2_label = 'Run 2'
 
+    # Determine extra_plots setting
+    # Default: False for gradient flow (different lr), True otherwise
+    if args.no_extra_plots:
+        extra_plots = False
+    elif args.extra_plots:
+        extra_plots = True
+    else:
+        # Auto-detect: gradient flow plots (lr1 != lr2) default to no extra plots
+        if args.lr1 is not None and args.lr2 is not None and args.lr1 != args.lr2:
+            extra_plots = False
+            print("Gradient flow mode detected (lr1 != lr2): only plotting distance between runs")
+        else:
+            extra_plots = True
+
     # Load distance data
     csv_path = Path(args.distance_csv)
     if not csv_path.exists():
@@ -240,6 +262,25 @@ def main():
     print(f"Loaded {len(df)} rows from {csv_path}")
     print(f"Columns: {list(df.columns)}")
 
+    # For gradient flow plots (no extra plots), filter to only rows where
+    # the distance between runs is not NaN
+    if not extra_plots:
+        # Find the last valid step for l2_distance or test_distance
+        max_valid_step = 0
+        if 'l2_distance' in df.columns:
+            valid_l2 = df[df['l2_distance'].notna()]
+            if len(valid_l2) > 0:
+                max_valid_step = max(max_valid_step, valid_l2['step'].max())
+        if 'test_distance' in df.columns:
+            valid_test = df[df['test_distance'].notna()]
+            if len(valid_test) > 0:
+                max_valid_step = max(max_valid_step, valid_test['step'].max())
+
+        if max_valid_step > 0:
+            original_len = len(df)
+            df = df[df['step'] <= max_valid_step].copy()
+            print(f"Filtered to steps <= {max_valid_step} ({len(df)}/{original_len} rows)")
+
     # Create plot
     output_path = Path(args.output)
     plot_trajectory_comparison(
@@ -249,6 +290,7 @@ def main():
         run2_label=args.run2_label,
         lr1=args.lr1,
         lr2=args.lr2,
+        extra_plots=extra_plots,
     )
 
     return 0
