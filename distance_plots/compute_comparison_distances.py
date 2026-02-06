@@ -22,6 +22,7 @@ Usage:
 """
 
 import argparse
+import json
 import sys
 from pathlib import Path
 
@@ -381,10 +382,52 @@ def main():
         print("Warning: No distances were computed.", file=sys.stderr)
         return 1
 
+    # Save plot configuration with all metadata needed for plotting
+    def extract_label_from_path(path: Path) -> str:
+        """Extract a readable label from run folder name."""
+        name = path.name
+        # Try to extract eta and beta from folder name
+        import re
+        eta_match = re.search(r'eta([\d.]+)', name)
+        beta_match = re.search(r'beta([\d.]+)', name)
+        if eta_match and beta_match:
+            eta = eta_match.group(1)
+            beta = beta_match.group(1)
+            if float(beta) == 0:
+                return f"SGD (eta={eta})"
+            else:
+                return f"SGD+M (eta={eta}, beta={beta})"
+        return name
+
+    plot_config = {
+        "distance_csv": str(output_dir / "all_distances.csv"),
+        "run1_path": str(run1_path),
+        "run2_path": str(run2_path),
+        "lr1": args.lr1,
+        "lr2": args.lr2,
+        "run1_label": extract_label_from_path(run1_path),
+        "run2_label": extract_label_from_path(run2_path),
+        "columns": list(all_distances.columns),
+        "num_steps": len(all_distances),
+    }
+
+    config_path = output_dir / "plot_config.json"
+    with open(config_path, 'w') as f:
+        json.dump(plot_config, f, indent=2)
+    print(f"Saved plot configuration to plot_config.json")
+
     print("\n" + "=" * 60)
     print("Distance computation complete!")
     print(f"Output directory: {output_dir}")
     print("=" * 60)
+    print("\nTo generate the plot, run:")
+    print(f"  python distance_plots/plot_trajectory_comparison.py \\")
+    print(f"      --distance-csv {output_dir / 'all_distances.csv'} \\")
+    print(f"      --output {output_dir / 'trajectory_comparison.png'} \\")
+    print(f"      --run1-label \"{plot_config['run1_label']}\" \\")
+    print(f"      --run2-label \"{plot_config['run2_label']}\" \\")
+    if args.lr1:
+        print(f"      --lr1 {args.lr1}")
 
     return 0
 

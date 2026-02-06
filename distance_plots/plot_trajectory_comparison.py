@@ -13,6 +13,11 @@ Each panel shows:
 - Run2 from init - solid green
 
 Usage:
+    # Option 1: Use config file (recommended)
+    python distance_plots/plot_trajectory_comparison.py \
+        --config output/comparison/plot_config.json
+
+    # Option 2: Specify all arguments manually
     python distance_plots/plot_trajectory_comparison.py \
         --distance-csv output/comparison/all_distances.csv \
         --output output/comparison/trajectory_comparison.png \
@@ -21,6 +26,7 @@ Usage:
 """
 
 import argparse
+import json
 import sys
 from pathlib import Path
 
@@ -168,13 +174,15 @@ def main():
     parser = argparse.ArgumentParser(
         description='Plot trajectory comparison between two training runs'
     )
-    parser.add_argument('--distance-csv', type=str, required=True,
+    parser.add_argument('--config', type=str, default=None,
+                       help='Path to plot_config.json (auto-fills other args)')
+    parser.add_argument('--distance-csv', type=str, default=None,
                        help='Path to all_distances.csv')
-    parser.add_argument('--output', type=str, required=True,
+    parser.add_argument('--output', type=str, default=None,
                        help='Output path for the plot')
-    parser.add_argument('--run1-label', type=str, default='Run 1',
+    parser.add_argument('--run1-label', type=str, default=None,
                        help='Label for Run 1 in legend')
-    parser.add_argument('--run2-label', type=str, default='Run 2',
+    parser.add_argument('--run2-label', type=str, default=None,
                        help='Label for Run 2 in legend')
     parser.add_argument('--lr1', type=float, default=None,
                        help='Learning rate for Run 1 (for time axis)')
@@ -182,6 +190,45 @@ def main():
                        help='Learning rate for Run 2 (for time axis)')
 
     args = parser.parse_args()
+
+    # Load config file if provided
+    if args.config:
+        config_path = Path(args.config)
+        if not config_path.exists():
+            print(f"Error: Config file not found: {config_path}", file=sys.stderr)
+            return 1
+        with open(config_path) as f:
+            config = json.load(f)
+        # Fill in missing args from config
+        if args.distance_csv is None:
+            args.distance_csv = config.get('distance_csv')
+        if args.run1_label is None:
+            args.run1_label = config.get('run1_label', 'Run 1')
+        if args.run2_label is None:
+            args.run2_label = config.get('run2_label', 'Run 2')
+        if args.lr1 is None:
+            args.lr1 = config.get('lr1')
+        if args.lr2 is None:
+            args.lr2 = config.get('lr2')
+        if args.output is None:
+            # Default output next to the CSV
+            csv_dir = Path(config.get('distance_csv', '.')).parent
+            args.output = str(csv_dir / 'trajectory_comparison.png')
+        print(f"Loaded config from {config_path}")
+
+    # Validate required args
+    if args.distance_csv is None:
+        print("Error: --distance-csv is required (or use --config)", file=sys.stderr)
+        return 1
+    if args.output is None:
+        print("Error: --output is required (or use --config)", file=sys.stderr)
+        return 1
+
+    # Set defaults for labels
+    if args.run1_label is None:
+        args.run1_label = 'Run 1'
+    if args.run2_label is None:
+        args.run2_label = 'Run 2'
 
     # Load distance data
     csv_path = Path(args.distance_csv)
