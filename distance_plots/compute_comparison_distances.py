@@ -419,14 +419,21 @@ def main():
     print("Distance computation complete!")
     print(f"Output directory: {output_dir}")
     print("=" * 60)
-    print("\nTo generate the plot, run:")
-    print(f"  python distance_plots/plot_trajectory_comparison.py \\")
-    print(f"      --distance-csv {output_dir / 'all_distances.csv'} \\")
-    print(f"      --output {output_dir / 'trajectory_comparison.png'} \\")
-    print(f"      --run1-label \"{plot_config['run1_label']}\" \\")
-    print(f"      --run2-label \"{plot_config['run2_label']}\" \\")
+    print("\n" + "=" * 60)
+    print("NEXT STEP: Generate the plot")
+    print("=" * 60)
+    print("\n# Option 1 (recommended): Use config file")
+    print(f"python distance_plots/plot_trajectory_comparison.py \\")
+    print(f"    --config {config_path}")
+    print("\n# Option 2: Specify all arguments")
+    print(f"python distance_plots/plot_trajectory_comparison.py \\")
+    print(f"    --distance-csv {output_dir / 'all_distances.csv'} \\")
+    print(f"    --output {output_dir / 'trajectory_comparison.png'} \\")
+    print(f"    --run1-label \"{plot_config['run1_label']}\" \\")
+    print(f"    --run2-label \"{plot_config['run2_label']}\" \\")
     if args.lr1:
-        print(f"      --lr1 {args.lr1}")
+        print(f"    --lr1 {args.lr1}")
+    print("")
 
     return 0
 
