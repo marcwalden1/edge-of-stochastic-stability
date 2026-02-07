@@ -125,8 +125,17 @@ def plot_metrics(df: pd.DataFrame, run: RunInfo) -> plt.Figure:
     ax.set_xlabel('steps')
     ax.set_ylabel('sharpness')
     ax.set_title(f'Batch Sharpness & λ_max (batch size {run.batch_size}, lr={run.lr})')
-    ax.legend(loc='best')
+    ax.legend(loc='upper left')
     ax.grid(True, alpha=0.3)
+
+    # Loss on secondary y-axis (log scale)
+    ax_loss = ax.twinx()
+    loss = df[['step', 'full_loss']].dropna()
+    if not loss.empty:
+        ax_loss.plot(loss['step'], loss['full_loss'], color='gray', label='full batch loss')
+        ax_loss.set_yscale('log')
+        ax_loss.set_ylabel('Loss')
+        ax_loss.legend(loc='upper right')
 
     return fig
 
