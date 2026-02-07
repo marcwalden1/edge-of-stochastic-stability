@@ -107,9 +107,6 @@ def plot_metrics(df: pd.DataFrame, run: RunInfo) -> plt.Figure:
     """Plot batch sharpness and lambda_max vs training steps."""
     fig, ax = plt.subplots(figsize=(10, 5))
 
-    # Reference line at 2/eta
-    ax.axhline(y=2 / run.lr, color='black', linestyle='--', label=r'2/$\eta$')
-
     # Plot batch sharpness
     batch_sharp = df[['step', 'batch_sharpness']].dropna()
     if not batch_sharp.empty:
@@ -124,7 +121,8 @@ def plot_metrics(df: pd.DataFrame, run: RunInfo) -> plt.Figure:
 
     ax.set_xlabel('steps')
     ax.set_ylabel('sharpness')
-    ax.set_title(f'Batch Sharpness & λ_max (batch size {run.batch_size}, lr={run.lr})')
+    two_over_eta = 2 / run.lr
+    ax.set_title(f'Batch Sharpness & λ_max (batch size {run.batch_size}, lr={run.lr}, 2/η={two_over_eta:.1f})')
     ax.legend(loc='upper left')
     ax.grid(True, alpha=0.3)
 
