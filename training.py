@@ -1205,7 +1205,8 @@ if __name__ == '__main__':
     # --- Optimizer Variants ---
     parser.add_argument('--momentum', type=float, default=None, help='Momentum for SGD optimizer')
     parser.add_argument('--adam', action='store_true', help='If set, use Adam optimizer instead of SGD')
-    parser.add_argument('--rmsprop', action='store_true', help='If set, use RMSProp optimizer instead of SGD')
+    parser.add_argument('--rmsprop', type=float, nargs='?', const=0.99, default=None,
+                        help='Use RMSProp optimizer with specified alpha (smoothing constant). Default alpha is 0.99 if flag used without value.')
     parser.add_argument('--nesterov', action='store_true', help='Use Nesterov momentum with SGD (requires --momentum > 0)')
     parser.add_argument('--momentum-warmup', '--momentum_warmup', action='store_true', 
                        help='If set, use momentum=0 for first N steps, then switch to target momentum (requires --momentum)')
@@ -1330,10 +1331,10 @@ if __name__ == '__main__':
     if args.momentum is not None and args.adam:
         raise ValueError("You should provide either momentum or adam, not both")
 
-    if args.adam and args.rmsprop:
+    if args.adam and args.rmsprop is not None:
         raise ValueError("You should provide either --adam or --rmsprop, not both")
 
-    if args.momentum is not None and args.rmsprop:
+    if args.momentum is not None and args.rmsprop is not None:
         raise ValueError("You should provide either --momentum or --rmsprop, not both")
 
     if args.momentum is not None and args.momentum < 1e-4 and not args.adam:
@@ -1503,7 +1504,7 @@ if __name__ == '__main__':
         # param_reference = {k: v.to(device) for k, v in param_reference.items()}
 
     # ----- Optimizer Preparation -----
-    optimizer = prepare_optimizer(net, args.lr, args.momentum, args.adam, args.nesterov, rmsprop=args.rmsprop)
+    optimizer = prepare_optimizer(net, args.lr, args.momentum, args.adam, args.nesterov, rmsprop_alpha=args.rmsprop)
 
     # ----- Checkpoint Cadence Determination -----
     if args.checkpoint_every is not None:

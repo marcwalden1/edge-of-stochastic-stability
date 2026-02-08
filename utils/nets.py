@@ -444,9 +444,9 @@ def initialize_net(net, scale=None, seed=None):
             raise ValueError("Unknown net type")
 
 
-def prepare_optimizer(net, lr, momentum, adam, nesterov: bool = False, rmsprop: bool = False):
-    if rmsprop:
-        return T.optim.RMSprop(net.parameters(), lr=lr)
+def prepare_optimizer(net, lr, momentum, adam, nesterov: bool = False, rmsprop_alpha: float = None):
+    if rmsprop_alpha is not None:
+        return T.optim.RMSprop(net.parameters(), lr=lr, alpha=rmsprop_alpha)
     if adam:
         if momentum is not None:
             raise ValueError("Momentum is not supported for Adam, just because. Change the code if you need to change the params in Adam")
