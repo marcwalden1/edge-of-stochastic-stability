@@ -135,7 +135,6 @@ def plot_metrics(df: pd.DataFrame, run: RunInfo,
     lmax = df[['step', 'lambda_max']].dropna()
     if not lmax.empty:
         ax_top.plot(lmax['step'], lmax['lambda_max'],
-                    marker='o', markersize=2, linestyle='',
                     label=r'$\lambda_{max}$', color='#1f77b4')
 
     ax_top.set_ylabel('sharpness')
@@ -160,23 +159,22 @@ def plot_metrics(df: pd.DataFrame, run: RunInfo,
             abs_data = df[['step', 'adaptive_batch_sharpness']].dropna()
             if not abs_data.empty:
                 ax_bot.plot(abs_data['step'], abs_data['adaptive_batch_sharpness'],
-                            label='adaptive sharpness', color='#ff7f0e')
+                            label='adaptive batch sharpness', color='#ff7f0e')
 
         if 'adaptive_batch_sharpness_momentum' in df.columns:
             absm_data = df[['step', 'adaptive_batch_sharpness_momentum']].dropna()
             if not absm_data.empty:
                 ax_bot.plot(absm_data['step'], absm_data['adaptive_batch_sharpness_momentum'],
-                            label='adaptive sharpness (mom)', color='#d62728')
+                            label='adaptive batch sharpness momentum', color='#d62728')
 
         if 'lmax_preconditioned' in df.columns:
             lmax_pc = df[['step', 'lmax_preconditioned']].dropna()
             if not lmax_pc.empty:
                 ax_bot.plot(lmax_pc['step'], lmax_pc['lmax_preconditioned'],
-                            marker='s', markersize=2, linestyle='',
                             label=r'$\lambda_{max}(P^{-1}H)$', color='#9467bd')
 
         ax_bot.set_xlabel('steps')
-        ax_bot.set_ylabel('preconditioned sharpness')
+        ax_bot.set_ylabel('sharpness')
         ax_bot.legend(loc='upper left')
         ax_bot.grid(True, alpha=0.3)
         if ylimbottom is not None:
