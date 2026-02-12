@@ -138,13 +138,9 @@ def plot_metrics(df: pd.DataFrame, run: RunInfo,
                     marker='o', markersize=2, linestyle='',
                     label=r'$\lambda_{max}$', color='#1f77b4')
 
-    two_over_eta = 2 / run.lr
-    xmax = int(df['step'].max()) if not df['step'].isna().all() else 1
-    ax_top.hlines(y=two_over_eta, xmin=0, xmax=xmax, colors='gray', linestyles=':',
-                  label=f'2/η={two_over_eta:.1f}')
-
     ax_top.set_ylabel('sharpness')
-    ax_top.set_title(f'Batch Sharpness & λ_max (batch size {run.batch_size}, lr={run.lr})')
+    two_over_eta = 2 / run.lr
+    ax_top.set_title(f'Batch Sharpness & λ_max (batch size {run.batch_size}, lr={run.lr}, 2/η={two_over_eta:.1f})')
     ax_top.legend(loc='upper left')
     ax_top.grid(True, alpha=0.3)
     if ylimtop is not None:
@@ -170,7 +166,7 @@ def plot_metrics(df: pd.DataFrame, run: RunInfo,
             absm_data = df[['step', 'adaptive_batch_sharpness_momentum']].dropna()
             if not absm_data.empty:
                 ax_bot.plot(absm_data['step'], absm_data['adaptive_batch_sharpness_momentum'],
-                            linestyle='--', label='adaptive sharpness (mom)', color='#d62728')
+                            label='adaptive sharpness (mom)', color='#d62728')
 
         if 'lmax_preconditioned' in df.columns:
             lmax_pc = df[['step', 'lmax_preconditioned']].dropna()
