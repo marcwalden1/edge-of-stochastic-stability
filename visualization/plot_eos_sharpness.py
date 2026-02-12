@@ -98,28 +98,12 @@ def main() -> None:
     parser.add_argument("--batch", type=int, required=True, help="Batch size to include (e.g., 8192)")
     parser.add_argument("--lrs", type=float, nargs="+", required=False, default=[], help="List of learning rates to include (e.g., 0.02 0.01 0.0066667 0.005)")
     parser.add_argument("--runs", type=str, nargs="+", required=False, default=None, help="Explicit run folder names under the subdir (e.g., 20251210_2101_35_lr0.00667_b8192)")
-    parser.add_argument("--include-batch-sharpness", action="store_true", help="Include batch_sharpness curves")
-    parser.add_argument("--include-sharpness", action="store_true", help="Include step_sharpness (averaged) curves")
-    parser.add_argument("--include-loss", action="store_true", help="Include full_loss curve (secondary axis)")
-    parser.add_argument("--include-adaptive-sharpness", action="store_true", help="Include adaptive batch sharpness curves")
-    parser.add_argument("--include-adaptive-sharpness-momentum", action="store_true", help="Include adaptive batch sharpness with momentum curves")
-    parser.add_argument("--include-lmax-preconditioned", action="store_true", help="Include preconditioned lambda_max curves")
     parser.add_argument("--output", type=str, default=None, help="Output image filename (default auto)")
     parser.add_argument("--max-steps", type=int, default=None, help="If set, only plot data with step <= this value (e.g., 12000)")
+    parser.add_argument("--ylimtop", type=float, default=None, help="Upper y-axis limit for top subplot (e.g., 500)")
+    parser.add_argument("--ylimbottom", type=float, default=None, help="Upper y-axis limit for bottom subplot (e.g., 100)")
 
     args = parser.parse_args()
-
-    # Default: plot everything if no metric flags provided
-    any_metric = any([args.include_batch_sharpness, args.include_sharpness, args.include_loss,
-                      args.include_adaptive_sharpness, args.include_adaptive_sharpness_momentum,
-                      args.include_lmax_preconditioned])
-    if not any_metric:
-        args.include_batch_sharpness = True
-        args.include_sharpness = True
-        args.include_loss = True
-        args.include_adaptive_sharpness = True
-        args.include_adaptive_sharpness_momentum = True
-        args.include_lmax_preconditioned = True
 
     base_root = require_env_path('RESULTS') / 'plaintext'
     results_root = base_root / args.subdir
@@ -149,69 +133,58 @@ def main() -> None:
     if not runs:
         raise ResultsConfigError(f"No runs found under {results_root} matching batch={args.batch} and lrs={args.lrs}")
 
+    # Load all dataframes and check if any preconditioned data exists
+    sorted_runs = sorted(runs, key=lambda r: r[2])
+    run_data = []
+    has_preconditioned = False
+    for folder, bsz, lr in sorted_runs:
+        df = load_results(folder)
+        run_data.append((folder, bsz, lr, df))
+        for col in ('adaptive_batch_sharpness', 'adaptive_batch_sharpness_momentum', 'lmax_preconditioned'):
+            if col in df.columns and df[col].notna().any():
+                has_preconditioned = True
+
     # Colors per curve (up to four): blue, orange, green, red
     color_cycle = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728']
 
-    fig, ax = plt.subplots(figsize=(10, 5))
-    loss_ax = ax.twinx() if args.include_loss else None
+    # Create figure: 1 or 2 subplots depending on whether preconditioned data exists
+    if has_preconditioned:
+        fig, (ax_top, ax_bot) = plt.subplots(2, 1, figsize=(10, 9), sharex=True)
+    else:
+        fig, ax_top = plt.subplots(figsize=(10, 5))
+        ax_bot = None
+
+    loss_ax_top = ax_top.twinx()
+    loss_ax_bot = ax_bot.twinx() if ax_bot is not None else None
 
     # Plot each run
-    for idx, (folder, bsz, lr) in enumerate(sorted(runs, key=lambda r: r[2])):
-        df = load_results(folder)
+    for idx, (folder, bsz, lr, df) in enumerate(run_data):
         color = color_cycle[idx % len(color_cycle)]
         label = f"lr={lr}"
 
-        if args.include_batch_sharpness:
-            bs_df = df[['step', 'batch_sharpness']].dropna()
-            if args.max_steps is not None:
-                bs_df = bs_df[bs_df['step'] <= args.max_steps]
-            if not bs_df.empty:
-                ax.plot(bs_df['step'], bs_df['batch_sharpness'], color=color, label=label)
+        # --- Top subplot: batch sharpness, lambda_max, loss ---
+        bs_df = df[['step', 'batch_sharpness']].dropna()
+        if args.max_steps is not None:
+            bs_df = bs_df[bs_df['step'] <= args.max_steps]
+        if not bs_df.empty:
+            ax_top.plot(bs_df['step'], bs_df['batch_sharpness'], color=color, label=label + ' batch sharpness')
 
-        if args.include_sharpness:
-            ss_df = df[['step', 'step_sharpness']].dropna()
-            if args.max_steps is not None:
-                ss_df = ss_df[ss_df['step'] <= args.max_steps]
-            if not ss_df.empty:
-                averaged = rolling_average(ss_df['step_sharpness'])
-                ax.plot(ss_df['step'], averaged, color=color, linestyle='--', label=label + ' (step)')
+        lmax_df = df[['step', 'lambda_max']].dropna()
+        if args.max_steps is not None:
+            lmax_df = lmax_df[lmax_df['step'] <= args.max_steps]
+        if not lmax_df.empty:
+            ax_top.plot(lmax_df['step'], lmax_df['lambda_max'], color=color,
+                        marker='o', markersize=2, linestyle='', label=label + r' $\lambda_{max}$')
 
-        if args.include_adaptive_sharpness and 'adaptive_batch_sharpness' in df.columns:
-            abs_df = df[['step', 'adaptive_batch_sharpness']].dropna()
-            if args.max_steps is not None:
-                abs_df = abs_df[abs_df['step'] <= args.max_steps]
-            if not abs_df.empty:
-                ax.plot(abs_df['step'], abs_df['adaptive_batch_sharpness'], color=color,
-                        linestyle='-.', label=label + ' (adaptive)')
+        loss_df = df[['step', 'full_loss']].dropna()
+        if args.max_steps is not None:
+            loss_df = loss_df[loss_df['step'] <= args.max_steps]
+        if not loss_df.empty:
+            loss_ax_top.plot(loss_df['step'], loss_df['full_loss'], color=color, alpha=0.3, label=label + ' loss')
+            loss_ax_top.set_yscale('log')
+            loss_ax_top.set_ylabel('Loss (log)')
 
-        if args.include_adaptive_sharpness_momentum and 'adaptive_batch_sharpness_momentum' in df.columns:
-            absm_df = df[['step', 'adaptive_batch_sharpness_momentum']].dropna()
-            if args.max_steps is not None:
-                absm_df = absm_df[absm_df['step'] <= args.max_steps]
-            if not absm_df.empty:
-                ax.plot(absm_df['step'], absm_df['adaptive_batch_sharpness_momentum'], color=color,
-                        linestyle=':', label=label + ' (adaptive mom)')
-
-        if args.include_lmax_preconditioned and 'lmax_preconditioned' in df.columns:
-            lpc_df = df[['step', 'lmax_preconditioned']].dropna()
-            if args.max_steps is not None:
-                lpc_df = lpc_df[lpc_df['step'] <= args.max_steps]
-            if not lpc_df.empty:
-                ax.plot(lpc_df['step'], lpc_df['lmax_preconditioned'], color=color,
-                        marker='s', markersize=2, linestyle='', label=label + r' $\lambda_{max}(P^{-1}H)$')
-
-        if args.include_loss and loss_ax is not None:
-            loss_df = df[['step', 'full_loss']].dropna()
-            if args.max_steps is not None:
-                loss_df = loss_df[loss_df['step'] <= args.max_steps]
-            if not loss_df.empty:
-                loss_ax.plot(loss_df['step'], loss_df['full_loss'], color=color, alpha=0.4, label=label + ' loss')
-                loss_ax.set_yscale('log')
-                loss_ax.set_ylabel('Loss (log)')
-
-        # Draw horizontal line at 2/eta (eta == lr) using the same color
-        # Determine x-range for the line based on plotted step range
-        # Prefer max_steps if provided; otherwise use max step present in df
+        # 2/eta line on top subplot
         try:
             xmax = args.max_steps if args.max_steps is not None else int(df['step'].max())
         except Exception:
@@ -219,15 +192,62 @@ def main() -> None:
         if xmax is None or xmax <= 0:
             xmax = 1
         y_level = 2.0 / lr
-        ax.hlines(y=y_level, xmin=0, xmax=xmax, colors=color, linestyles=':')
+        ax_top.hlines(y=y_level, xmin=0, xmax=xmax, colors=color, linestyles=':')
 
-    ax.set_xlabel('steps')
-    ax.set_ylabel('sharpness')
-    ax.set_title(f"Metrics vs steps ({args.subdir}) batch={args.batch}")
-    ax.grid(True, alpha=0.2)
-    ax.legend(loc='upper left')
-    if loss_ax is not None:
-        loss_ax.legend(loc='upper right')
+        # --- Bottom subplot: preconditioned metrics + loss ---
+        if ax_bot is not None:
+            if 'adaptive_batch_sharpness' in df.columns:
+                abs_df = df[['step', 'adaptive_batch_sharpness']].dropna()
+                if args.max_steps is not None:
+                    abs_df = abs_df[abs_df['step'] <= args.max_steps]
+                if not abs_df.empty:
+                    ax_bot.plot(abs_df['step'], abs_df['adaptive_batch_sharpness'], color=color,
+                                label=label + ' adaptive sharpness')
+
+            if 'adaptive_batch_sharpness_momentum' in df.columns:
+                absm_df = df[['step', 'adaptive_batch_sharpness_momentum']].dropna()
+                if args.max_steps is not None:
+                    absm_df = absm_df[absm_df['step'] <= args.max_steps]
+                if not absm_df.empty:
+                    ax_bot.plot(absm_df['step'], absm_df['adaptive_batch_sharpness_momentum'], color=color,
+                                linestyle='--', label=label + ' adaptive sharpness (mom)')
+
+            if 'lmax_preconditioned' in df.columns:
+                lpc_df = df[['step', 'lmax_preconditioned']].dropna()
+                if args.max_steps is not None:
+                    lpc_df = lpc_df[lpc_df['step'] <= args.max_steps]
+                if not lpc_df.empty:
+                    ax_bot.plot(lpc_df['step'], lpc_df['lmax_preconditioned'], color=color,
+                                marker='s', markersize=2, linestyle='',
+                                label=label + r' $\lambda_{max}(P^{-1}H)$')
+
+            if not loss_df.empty:
+                loss_ax_bot.plot(loss_df['step'], loss_df['full_loss'], color=color, alpha=0.3, label=label + ' loss')
+                loss_ax_bot.set_yscale('log')
+                loss_ax_bot.set_ylabel('Loss (log)')
+
+    # Format top subplot
+    ax_top.set_ylabel('sharpness')
+    ax_top.set_title(f"Metrics vs steps ({args.subdir}) batch={args.batch}")
+    ax_top.grid(True, alpha=0.2)
+    ax_top.legend(loc='upper left', fontsize=8)
+    loss_ax_top.legend(loc='upper right', fontsize=8)
+    if args.ylimtop is not None:
+        ax_top.set_ylim(top=args.ylimtop)
+
+    # Format bottom subplot
+    if ax_bot is not None:
+        ax_bot.set_xlabel('steps')
+        ax_bot.set_ylabel('preconditioned sharpness')
+        ax_bot.grid(True, alpha=0.2)
+        ax_bot.legend(loc='upper left', fontsize=8)
+        loss_ax_bot.legend(loc='upper right', fontsize=8)
+        if args.ylimbottom is not None:
+            ax_bot.set_ylim(top=args.ylimbottom)
+    else:
+        ax_top.set_xlabel('steps')
+
+    plt.tight_layout()
 
     # Save output
     script_dir = Path(__file__).parent
@@ -239,7 +259,7 @@ def main() -> None:
         if args.lrs:
             lr_tag = '_'.join(str(x) for x in args.lrs)
         else:
-            lr_tag = '_'.join(f"{r[2]:.5f}" for r in runs)
+            lr_tag = '_'.join(f"{r[2]:.5f}" for r in sorted_runs)
         output_path = img_dir / f"eos_{args.subdir}_b{args.batch}_lrs_{lr_tag}.png"
     fig.savefig(output_path, dpi=300, bbox_inches='tight')
     print(f"Plot saved to: {output_path}")
