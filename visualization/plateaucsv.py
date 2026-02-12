@@ -87,7 +87,7 @@ def calculate_plateau_values(results_root: Path) -> List[Dict[str, Any]]:
                 'learning_rate': lr,
                 'folder': folder.name,
                 'total_steps': int(len(df)),
-                'final_step': int(df['step'].iloc[-1]) if 'step' in df.columns and not df['step'].isna().all() else None,
+                'final_step': int(df['step'].dropna().iloc[-1]) if 'step' in df.columns and not df['step'].isna().all() else None,
             }
 
             # Metrics to aggregate
