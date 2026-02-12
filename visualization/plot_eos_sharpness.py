@@ -19,6 +19,9 @@ COLUMN_NAMES = [
     "batch_sharpness",
     "gni",
     "total_accuracy",
+    "adaptive_batch_sharpness",
+    "adaptive_batch_sharpness_momentum",
+    "lmax_preconditioned",
 ]
 
 
@@ -98,13 +101,19 @@ def main() -> None:
     parser.add_argument("--include-batch-sharpness", action="store_true", help="Include batch_sharpness curves")
     parser.add_argument("--include-sharpness", action="store_true", help="Include step_sharpness (averaged) curves")
     parser.add_argument("--include-loss", action="store_true", help="Include full_loss curve (secondary axis)")
+    parser.add_argument("--include-adaptive-sharpness", action="store_true", help="Include adaptive batch sharpness curves")
+    parser.add_argument("--include-adaptive-sharpness-momentum", action="store_true", help="Include adaptive batch sharpness with momentum curves")
+    parser.add_argument("--include-lmax-preconditioned", action="store_true", help="Include preconditioned lambda_max curves")
     parser.add_argument("--output", type=str, default=None, help="Output image filename (default auto)")
     parser.add_argument("--max-steps", type=int, default=None, help="If set, only plot data with step <= this value (e.g., 12000)")
 
     args = parser.parse_args()
 
     # Default to batch sharpness only if no metric flags provided
-    if not any([args.include_batch_sharpness, args.include_sharpness, args.include_loss]):
+    any_metric = any([args.include_batch_sharpness, args.include_sharpness, args.include_loss,
+                      args.include_adaptive_sharpness, args.include_adaptive_sharpness_momentum,
+                      args.include_lmax_preconditioned])
+    if not any_metric:
         args.include_batch_sharpness = True
 
     base_root = require_env_path('RESULTS') / 'plaintext'
@@ -161,6 +170,30 @@ def main() -> None:
             if not ss_df.empty:
                 averaged = rolling_average(ss_df['step_sharpness'])
                 ax.plot(ss_df['step'], averaged, color=color, linestyle='--', label=label + ' (step)')
+
+        if args.include_adaptive_sharpness and 'adaptive_batch_sharpness' in df.columns:
+            abs_df = df[['step', 'adaptive_batch_sharpness']].dropna()
+            if args.max_steps is not None:
+                abs_df = abs_df[abs_df['step'] <= args.max_steps]
+            if not abs_df.empty:
+                ax.plot(abs_df['step'], abs_df['adaptive_batch_sharpness'], color=color,
+                        linestyle='-.', label=label + ' (adaptive)')
+
+        if args.include_adaptive_sharpness_momentum and 'adaptive_batch_sharpness_momentum' in df.columns:
+            absm_df = df[['step', 'adaptive_batch_sharpness_momentum']].dropna()
+            if args.max_steps is not None:
+                absm_df = absm_df[absm_df['step'] <= args.max_steps]
+            if not absm_df.empty:
+                ax.plot(absm_df['step'], absm_df['adaptive_batch_sharpness_momentum'], color=color,
+                        linestyle=':', label=label + ' (adaptive mom)')
+
+        if args.include_lmax_preconditioned and 'lmax_preconditioned' in df.columns:
+            lpc_df = df[['step', 'lmax_preconditioned']].dropna()
+            if args.max_steps is not None:
+                lpc_df = lpc_df[lpc_df['step'] <= args.max_steps]
+            if not lpc_df.empty:
+                ax.plot(lpc_df['step'], lpc_df['lmax_preconditioned'], color=color,
+                        marker='s', markersize=2, linestyle='', label=label + r' $\lambda_{max}(P^{-1}H)$')
 
         if args.include_loss and loss_ax is not None:
             loss_df = df[['step', 'full_loss']].dropna()

@@ -25,7 +25,12 @@ __all__ = ['param_vector', 'param_length', 'flatt', 'grads_vector',
            'calculate_gradient_norm_squared_mc', 'calculate_expected_one_step_full_loss_change',
            'calculate_expected_one_step_batch_loss_change', 'compute_gradient_projection_ratios',
            'estimate_hessian_trace', 'gimme_new_rng', 'gimme_random_subset_idx',
-           'compute_cosine_similarity', 'get_momentum_buffer_vector']
+           'compute_cosine_similarity', 'get_momentum_buffer_vector',
+           'get_rmsprop_preconditioner_inv', 'get_rmsprop_momentum_buffer',
+           'compute_adaptive_grad_H_grad', 'compute_adaptive_grad_H_grad_momentum',
+           'calculate_adaptive_batch_sharpness', 'calculate_adaptive_batch_sharpness_momentum',
+           'get_preconditioner_diag', 'create_preconditioned_hessian_vector_product',
+           'compute_preconditioned_eigenvalues']
 
 
 class EigenvectorCache:
@@ -143,6 +148,86 @@ def get_momentum_buffer_vector(optimizer: T.optim.Optimizer) -> T.Tensor | None:
                 return None
             buffers.append(state['momentum_buffer'].flatten().detach().clone())
     return T.cat(buffers) if buffers else None
+
+
+def get_rmsprop_preconditioner_inv(optimizer: T.optim.Optimizer) -> T.Tensor | None:
+    """Extract flattened P^{-1} vector from RMSProp optimizer state.
+
+    P = diag(sqrt(v_t) + eps), so P^{-1} = diag(1 / (sqrt(v_t) + eps)).
+    Returns None if the optimizer is not RMSProp or state is not yet initialized.
+    """
+    if not isinstance(optimizer, T.optim.RMSprop):
+        return None
+    eps = optimizer.param_groups[0].get('eps', 1e-8)
+    inv_parts = []
+    for group in optimizer.param_groups:
+        for p in group['params']:
+            state = optimizer.state.get(p)
+            if state is None or 'square_avg' not in state:
+                return None
+            inv_parts.append((1.0 / (state['square_avg'].sqrt() + eps)).flatten().detach().clone())
+    return T.cat(inv_parts) if inv_parts else None
+
+
+def get_rmsprop_momentum_buffer(optimizer: T.optim.Optimizer) -> T.Tensor | None:
+    """Extract flattened momentum buffer from RMSProp optimizer state.
+
+    Returns None if the optimizer is not RMSProp, momentum is 0, or state
+    is not yet initialized.
+    """
+    if not isinstance(optimizer, T.optim.RMSprop):
+        return None
+    if optimizer.param_groups[0].get('momentum', 0) == 0:
+        return None
+    buffers = []
+    for group in optimizer.param_groups:
+        for p in group['params']:
+            state = optimizer.state.get(p)
+            if state is None or 'momentum_buffer' not in state:
+                return None
+            buffers.append(state['momentum_buffer'].flatten().detach().clone())
+    return T.cat(buffers) if buffers else None
+
+
+def get_preconditioner_diag(optimizer: T.optim.Optimizer) -> T.Tensor | None:
+    """Extract flattened diagonal of the preconditioner P as a 1D tensor.
+
+    For RMSProp: P_diag = sqrt(v_t) + eps
+    For Adam:    P_diag = sqrt(v_t / (1 - beta2^step)) + eps  (bias-corrected)
+    For SGD or uninitialized state: returns None.
+    """
+    if isinstance(optimizer, T.optim.RMSprop):
+        eps = optimizer.param_groups[0].get('eps', 1e-8)
+        parts = []
+        for group in optimizer.param_groups:
+            for p in group['params']:
+                state = optimizer.state.get(p)
+                if state is None or 'square_avg' not in state:
+                    return None
+                parts.append((state['square_avg'].sqrt() + eps).flatten().detach().clone())
+        return T.cat(parts) if parts else None
+
+    if isinstance(optimizer, T.optim.Adam) or isinstance(optimizer, T.optim.AdamW):
+        eps = optimizer.param_groups[0].get('eps', 1e-8)
+        beta2 = optimizer.param_groups[0]['betas'][1]
+        parts = []
+        for group in optimizer.param_groups:
+            for p in group['params']:
+                state = optimizer.state.get(p)
+                if state is None or 'exp_avg_sq' not in state:
+                    return None
+                step = state['step']
+                if isinstance(step, T.Tensor):
+                    step = step.item()
+                if step == 0:
+                    return None
+                bias_correction2 = 1 - beta2 ** step
+                v_hat = state['exp_avg_sq'] / bias_correction2
+                parts.append((v_hat.sqrt() + eps).flatten().detach().clone())
+        return T.cat(parts) if parts else None
+
+    # SGD or any other optimizer
+    return None
 
 
 def gimme_new_rng():
@@ -410,6 +495,103 @@ def create_hessian_vector_product(loss, net):
     return hessian_vector_product
 
 
+def create_preconditioned_hessian_vector_product(loss, net, p_inv_sqrt):
+    """Create a matvec for the operator P^{-1/2} H P^{-1/2}.
+
+    Since P^{-1}H is not symmetric, we use the similarity transform
+    lambda(P^{-1}H) = lambda(P^{-1/2} H P^{-1/2}), which IS symmetric.
+
+    Args:
+        loss: Scalar loss (must retain computational graph).
+        net: Neural network model.
+        p_inv_sqrt: Flattened 1D tensor of element-wise 1/sqrt(P_diag).
+
+    Returns:
+        callable: v -> P^{-1/2} H (P^{-1/2} v)  (element-wise multiply).
+    """
+    hessian_matvec = create_hessian_vector_product(loss, net)
+
+    def preconditioned_matvec(v):
+        if v.dim() == 1:
+            return p_inv_sqrt * hessian_matvec(p_inv_sqrt * v)
+        elif v.dim() == 2:
+            # Multiple vectors: broadcast p_inv_sqrt[:, None]
+            scaled_v = p_inv_sqrt[:, None] * v
+            Hv = hessian_matvec(scaled_v)
+            return p_inv_sqrt[:, None] * Hv
+        else:
+            raise ValueError(f"Input tensor must be 1D or 2D, got {v.dim()}D")
+
+    return preconditioned_matvec
+
+
+def compute_preconditioned_eigenvalues(loss, net, p_inv_sqrt, k=1, max_iterations=100,
+                                       reltol=1e-2, eigenvector_cache=None,
+                                       return_eigenvectors=False):
+    """Compute top-k eigenvalues of P^{-1/2} H P^{-1/2} via LOBPCG.
+
+    Mirrors compute_multiple_eigenvalues_lobpcg but uses the preconditioned
+    operator.  The eigenvector cache lives in a different coordinate space
+    from the standard Hessian cache, so callers should supply a separate
+    EigenvectorCache instance.
+
+    Returns:
+        k=1, return_eigenvectors=False  -> scalar eigenvalue
+        k=1, return_eigenvectors=True   -> (scalar, eigenvector)
+        k>1, return_eigenvectors=False  -> tensor of shape [k]
+        k>1, return_eigenvectors=True   -> (tensor [k], matrix [n, k])
+    """
+    device = next(net.parameters()).device
+    n_params = param_length(net)
+
+    matvec = create_preconditioned_hessian_vector_product(loss, net, p_inv_sqrt)
+
+    # Initialize vectors: cache -> random
+    if eigenvector_cache is not None and len(eigenvector_cache) > 0:
+        cached_vectors = eigenvector_cache.get_warm_start_vectors(device)
+        if cached_vectors:
+            n_cached = min(len(cached_vectors), k)
+            X_list = cached_vectors[:n_cached]
+            if n_cached < k:
+                n_random = k - n_cached
+                random_vecs = torch.randn(n_params, n_random, device=device)
+                X_list.extend([random_vecs[:, i] for i in range(n_random)])
+            X = torch.stack(X_list, dim=1)
+        else:
+            X = torch.randn(n_params, k, device=device)
+    else:
+        X = torch.randn(n_params, k, device=device)
+
+    X = X.to(device)
+    if X.shape != (n_params, k):
+        X = X.reshape(n_params, k)
+
+    tol = reltol / (20 * n_params)
+
+    eigenvalues, eigenvectors, iterations = torch_lobpcg(
+        matvec, X, max_iter=max_iterations, tol=tol
+    )
+
+    try:
+        wandb.log({"preconditioned_lobpcg_iterations": iterations}, commit=False)
+    except:
+        pass
+
+    if eigenvector_cache is not None:
+        eigvec_list = [eigenvectors[:, i] for i in range(eigenvectors.shape[1])]
+        eigenvector_cache.store_eigenvectors(eigvec_list, eigenvalues.tolist())
+
+    if k == 1:
+        ev = eigenvalues[0]
+        if return_eigenvectors:
+            return ev, eigenvectors[:, 0]
+        return ev
+    else:
+        if return_eigenvectors:
+            return eigenvalues, eigenvectors
+        return eigenvalues
+
+
 def compute_multiple_eigenvalues_lobpcg(loss, net, k=5, max_iterations=100, reltol=1e-2,
                                        init_vectors=None, eigenvector_cache=None,
                                        return_eigenvectors=False):
@@ -669,6 +851,63 @@ def compute_grad_H_grad(loss, net, grad_already_there: bool = False,
 
 
 
+def compute_adaptive_grad_H_grad(loss, net, preconditioner_inv):
+    """Compute (u^T H u, g^T u) where u = P^{-1} g for a single batch.
+
+    This is the per-batch kernel for adaptive batch sharpness.
+    The ratio u^T H u / g^T u gives the preconditioned Rayleigh quotient.
+
+    Args:
+        loss: Scalar loss (must retain computational graph).
+        net: Neural network model.
+        preconditioner_inv: Flattened P^{-1} vector (detached).
+
+    Returns:
+        Tuple[Tensor, Tensor]: (u^T H u, g^T u) as scalar tensors.
+    """
+    params = list(net.parameters())
+    grads = torch.autograd.grad(loss, params, create_graph=True)
+    g_flat = flatt(grads)
+
+    u = g_flat.detach() * preconditioner_inv  # detached, no graph
+
+    scalar = T.dot(g_flat, u)  # has graph through g_flat
+    Hu = torch.autograd.grad(scalar, params, retain_graph=False)
+    Hu_flat = flatt(Hu).detach()
+
+    return T.dot(u, Hu_flat), T.dot(g_flat.detach(), u)
+
+
+def compute_adaptive_grad_H_grad_momentum(loss, net, preconditioner_inv, momentum_buffer, beta):
+    """Compute (s^T H s, g^T s) where s = beta*m + P^{-1}*g for a single batch.
+
+    This is the per-batch kernel for adaptive batch sharpness with momentum.
+    When beta=0, this reduces to compute_adaptive_grad_H_grad.
+
+    Args:
+        loss: Scalar loss (must retain computational graph).
+        net: Neural network model.
+        preconditioner_inv: Flattened P^{-1} vector (detached).
+        momentum_buffer: Flattened momentum buffer m (detached).
+        beta: Momentum coefficient.
+
+    Returns:
+        Tuple[Tensor, Tensor]: (s^T H s, g^T s) as scalar tensors.
+    """
+    params = list(net.parameters())
+    grads = torch.autograd.grad(loss, params, create_graph=True)
+    g_flat = flatt(grads)
+
+    u = g_flat.detach() * preconditioner_inv          # P^{-1} g_B (detached)
+    s = beta * momentum_buffer + u                     # s_B = beta*m + P^{-1}*g_B (all detached)
+
+    scalar = T.dot(g_flat, s)                          # g^T s (has graph through g_flat)
+    Hs = torch.autograd.grad(scalar, params, retain_graph=False)
+    Hs_flat = flatt(Hs).detach()
+
+    return T.dot(s, Hs_flat), T.dot(g_flat.detach(), s)  # (s^T H s, g^T s)
+
+
 def calculate_averaged_grad_H_grad(net,
                               X,
                               Y,
@@ -881,6 +1120,163 @@ def calculate_averaged_grad_H_grad_step(net,
     )
 
     return result
+
+
+def calculate_adaptive_batch_sharpness(net, X, Y, loss_fn, optimizer,
+                                       batch_size, n_estimates=1000,
+                                       min_estimates=20, eps=0.005):
+    """Compute adaptive batch sharpness E[u^T H_B u / g^T u] where u = P^{-1} g.
+
+    This is the preconditioned Rayleigh quotient averaged over mini-batches,
+    measuring curvature in RMSProp's adapted coordinate system.
+
+    Args:
+        net: Neural network model.
+        X: Full input tensor.
+        Y: Full target tensor.
+        loss_fn: Loss function.
+        optimizer: RMSProp optimizer (used to extract preconditioner state).
+        batch_size: Mini-batch size for MC sampling.
+        n_estimates: Maximum number of MC estimates.
+        min_estimates: Minimum estimates before checking convergence.
+        eps: Relative standard error threshold for early stopping.
+
+    Returns:
+        float: Estimated adaptive batch sharpness, or np.nan if preconditioner
+               is not available.
+    """
+    preconditioner_inv = get_rmsprop_preconditioner_inv(optimizer)
+    if preconditioner_inv is None:
+        return np.nan
+
+    numerators = []
+    denominators = []
+
+    rng = gimme_new_rng()
+
+    if batch_size > 128 and torch.cuda.is_available():
+        torch.cuda.empty_cache()
+
+    for i in range(n_estimates):
+        shuffle = T.randperm(len(X), generator=rng)
+        random_idx = shuffle[:batch_size]
+
+        X_batch = X[random_idx]
+        Y_batch = Y[random_idx]
+
+        loss = loss_fn(net(X_batch).squeeze(dim=-1), Y_batch)
+
+        uHu, gu = compute_adaptive_grad_H_grad(loss, net, preconditioner_inv)
+        numerators.append(uHu.item())
+        denominators.append(gu.item())
+
+        if i < min_estimates:
+            continue
+
+        # Delta-method convergence check (same as batch sharpness)
+        x_vals, y_vals = numerators, denominators
+        mean_x, mean_y = np.mean(x_vals), np.mean(y_vals)
+        var_x = np.var(x_vals, ddof=1)
+        var_y = np.var(y_vals, ddof=1)
+        cov_xy = np.cov(x_vals, y_vals, ddof=1)[0, 1]
+
+        R = mean_x / mean_y
+
+        var_R = (var_x / mean_y**2
+                 - 2 * cov_xy * mean_x / mean_y**3
+                 + var_y * mean_x**2 / mean_y**4) / i
+
+        rse = np.sqrt(var_R) / abs(R) if abs(R) > 1e-12 else float('inf')
+
+        if rse < eps:
+            break
+
+    try:
+        wandb.log({"number_of_adaptive_gHg_estimates": len(numerators)}, commit=False)
+    except Exception:
+        pass
+
+    if len(numerators) == 0:
+        return np.nan
+
+    return float(np.mean(np.array(numerators) / np.array(denominators)))
+
+
+def calculate_adaptive_batch_sharpness_momentum(net, X, Y, loss_fn, optimizer,
+                                                batch_size, n_estimates=1000,
+                                                min_estimates=20, eps=0.005):
+    """Compute adaptive batch sharpness with momentum: E[s^T H_B s / g^T s].
+
+    Here s = beta*m + P^{-1}*g where m is the current momentum buffer and
+    P^{-1} is the RMSProp preconditioner inverse.  When beta=0 this reduces
+    to the non-momentum adaptive batch sharpness.
+
+    Returns:
+        float: Estimated value, or np.nan if preconditioner/momentum buffer
+               is not available.
+    """
+    preconditioner_inv = get_rmsprop_preconditioner_inv(optimizer)
+    if preconditioner_inv is None:
+        return np.nan
+
+    momentum_buffer = get_rmsprop_momentum_buffer(optimizer)
+    if momentum_buffer is None:
+        return np.nan
+
+    beta = optimizer.param_groups[0].get('momentum', 0)
+
+    numerators = []
+    denominators = []
+
+    rng = gimme_new_rng()
+
+    if batch_size > 128 and torch.cuda.is_available():
+        torch.cuda.empty_cache()
+
+    for i in range(n_estimates):
+        shuffle = T.randperm(len(X), generator=rng)
+        random_idx = shuffle[:batch_size]
+
+        X_batch = X[random_idx]
+        Y_batch = Y[random_idx]
+
+        loss = loss_fn(net(X_batch).squeeze(dim=-1), Y_batch)
+
+        sHs, gs = compute_adaptive_grad_H_grad_momentum(
+            loss, net, preconditioner_inv, momentum_buffer, beta)
+        numerators.append(sHs.item())
+        denominators.append(gs.item())
+
+        if i < min_estimates:
+            continue
+
+        # Delta-method convergence check (same as batch sharpness)
+        x_vals, y_vals = numerators, denominators
+        mean_x, mean_y = np.mean(x_vals), np.mean(y_vals)
+        var_x = np.var(x_vals, ddof=1)
+        var_y = np.var(y_vals, ddof=1)
+        cov_xy = np.cov(x_vals, y_vals, ddof=1)[0, 1]
+
+        R = mean_x / mean_y
+
+        var_R = (var_x / mean_y**2
+                 - 2 * cov_xy * mean_x / mean_y**3
+                 + var_y * mean_x**2 / mean_y**4) / i
+
+        rse = np.sqrt(var_R) / abs(R) if abs(R) > 1e-12 else float('inf')
+
+        if rse < eps:
+            break
+
+    try:
+        wandb.log({"number_of_adaptive_mom_gHg_estimates": len(numerators)}, commit=False)
+    except Exception:
+        pass
+
+    if len(numerators) == 0:
+        return np.nan
+
+    return float(np.mean(np.array(numerators) / np.array(denominators)))
 
 
 ################################################################################

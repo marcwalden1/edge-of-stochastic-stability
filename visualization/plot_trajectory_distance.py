@@ -41,7 +41,9 @@ def load_lambda_max_data(run_id: str, results_root: Path) -> pd.DataFrame:
                 sep=',',
                 header=None,
                 names=['epoch', 'step', 'batch_loss', 'full_loss', 'lambda_max',
-                       'step_sharpness', 'batch_sharpness', 'gni', 'total_accuracy'],
+                       'step_sharpness', 'batch_sharpness', 'gni', 'total_accuracy',
+                       'adaptive_batch_sharpness', 'adaptive_batch_sharpness_momentum',
+                       'lmax_preconditioned'],
                 na_values=['nan'],
                 skipinitialspace=True
             )

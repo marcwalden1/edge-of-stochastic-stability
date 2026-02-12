@@ -38,6 +38,9 @@ COLUMN_NAMES = [
     "batch_sharpness",
     "gni",
     "total_accuracy",
+    "adaptive_batch_sharpness",
+    "adaptive_batch_sharpness_momentum",
+    "lmax_preconditioned",
 ]
 
 
@@ -118,6 +121,27 @@ def plot_metrics(df: pd.DataFrame, run: RunInfo) -> plt.Figure:
     if not lmax.empty:
         ax.plot(lmax['step'], lmax['lambda_max'],
                 label=r'$\lambda_{max}$', color='#1f77b4')
+
+    # Plot adaptive batch sharpness
+    if 'adaptive_batch_sharpness' in df.columns:
+        abs_data = df[['step', 'adaptive_batch_sharpness']].dropna()
+        if not abs_data.empty:
+            ax.plot(abs_data['step'], abs_data['adaptive_batch_sharpness'],
+                    label='adaptive batch sharpness', color='#ff7f0e')
+
+    # Plot adaptive batch sharpness with momentum
+    if 'adaptive_batch_sharpness_momentum' in df.columns:
+        absm_data = df[['step', 'adaptive_batch_sharpness_momentum']].dropna()
+        if not absm_data.empty:
+            ax.plot(absm_data['step'], absm_data['adaptive_batch_sharpness_momentum'],
+                    label='adaptive batch sharpness (mom)', color='#d62728')
+
+    # Plot preconditioned lambda_max
+    if 'lmax_preconditioned' in df.columns:
+        lmax_pc = df[['step', 'lmax_preconditioned']].dropna()
+        if not lmax_pc.empty:
+            ax.plot(lmax_pc['step'], lmax_pc['lmax_preconditioned'],
+                    label=r'$\lambda_{max}(P^{-1}H)$', color='#9467bd')
 
     ax.set_xlabel('steps')
     ax.set_ylabel('sharpness')

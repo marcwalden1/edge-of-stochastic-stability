@@ -35,6 +35,9 @@ COLUMN_NAMES = [
     "batch_sharpness",
     "gni",
     "total_accuracy",
+    "adaptive_batch_sharpness",
+    "adaptive_batch_sharpness_momentum",
+    "lmax_preconditioned",
 ]
 
 VARIANT_COLORS = {
@@ -374,10 +377,55 @@ def plot_intervention_comparison(
                 markeredgecolor=VARIANT_COLORS[variant],
             )
 
-    # Add legend entries for lambda_max and batch sharpness (black)
+        # Plot adaptive batch sharpness (dash-dot line)
+        if 'adaptive_batch_sharpness' in df.columns:
+            abs_data = df[['step', 'adaptive_batch_sharpness']].dropna()
+            if not abs_data.empty:
+                ax.plot(
+                    abs_data['step'],
+                    abs_data['adaptive_batch_sharpness'],
+                    color=VARIANT_COLORS[variant],
+                    linestyle='-.',
+                    linewidth=1.4,
+                    alpha=0.8,
+                )
+
+        # Plot adaptive batch sharpness with momentum (dotted line)
+        if 'adaptive_batch_sharpness_momentum' in df.columns:
+            absm_data = df[['step', 'adaptive_batch_sharpness_momentum']].dropna()
+            if not absm_data.empty:
+                ax.plot(
+                    absm_data['step'],
+                    absm_data['adaptive_batch_sharpness_momentum'],
+                    color=VARIANT_COLORS[variant],
+                    linestyle=':',
+                    linewidth=1.4,
+                    alpha=0.8,
+                )
+
+        # Plot preconditioned lambda_max (square markers)
+        if 'lmax_preconditioned' in df.columns:
+            lmax_pc = df[['step', 'lmax_preconditioned']].dropna()
+            if not lmax_pc.empty:
+                ax.plot(
+                    lmax_pc['step'],
+                    lmax_pc['lmax_preconditioned'],
+                    color=VARIANT_COLORS[variant],
+                    linestyle='',
+                    marker='s',
+                    markersize=2.5,
+                    markerfacecolor=VARIANT_COLORS[variant],
+                    markeredgecolor=VARIANT_COLORS[variant],
+                )
+
+    # Add legend entries for metric types (black)
     ax.plot([], [], color='black', linestyle='', marker='o', markersize=3.5,
             markerfacecolor='black', markeredgecolor='black', label=r'$\lambda_{\max}$')
     ax.plot([], [], color='black', linewidth=1.8, alpha=1.0, label='Batch Sharpness')
+    ax.plot([], [], color='black', linestyle='-.', linewidth=1.4, alpha=0.8, label='Adaptive Sharpness')
+    ax.plot([], [], color='black', linestyle=':', linewidth=1.4, alpha=0.8, label='Adaptive Sharpness (mom)')
+    ax.plot([], [], color='black', linestyle='', marker='s', markersize=2.5,
+            markerfacecolor='black', markeredgecolor='black', label=r'$\lambda_{\max}(P^{-1}H)$')
 
     # Mark intervention step with vertical line (no legend entry)
     if intervention_step is not None:

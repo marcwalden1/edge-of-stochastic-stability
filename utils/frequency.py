@@ -329,6 +329,23 @@ class FrequencyCalculator:
             freq = _rare_scale(ctx, freq, heavy=True)
             return ctx.step_number % freq == 0
 
+        def adaptive_batch_sharpness_rule(ctx: MeasurementContext) -> bool:
+            """Adaptive batch sharpness frequency rule (preconditioned Rayleigh quotient)."""
+            freq = 256
+            freq = _rare_scale(ctx, freq, heavy=False)
+            return ctx.step_number % freq == 0
+
+        def adaptive_batch_sharpness_momentum_rule(ctx: MeasurementContext) -> bool:
+            """Adaptive batch sharpness with momentum frequency rule."""
+            freq = 256
+            freq = _rare_scale(ctx, freq, heavy=False)
+            return ctx.step_number % freq == 0
+
+        def preconditioned_lambda_max_rule(ctx: MeasurementContext) -> bool:
+            """Preconditioned lambda_max(P^{-1}H) frequency rule — same cadence as full-batch lambda max."""
+            freq = 256
+            return ctx.step_number % freq == 0
+
         def trajectory_tracking_rule(ctx: MeasurementContext) -> bool:
             """Trajectory tracking cadence.
 
@@ -367,7 +384,10 @@ class FrequencyCalculator:
             'one_step_loss_change': one_step_loss_change_rule,
             'grad_projection': grad_projection_rule,
             'proj_eigens_refresh': proj_eigens_refresh_rule,
-            'trajectory_tracking': trajectory_tracking_rule
+            'trajectory_tracking': trajectory_tracking_rule,
+            'adaptive_batch_sharpness': adaptive_batch_sharpness_rule,
+            'adaptive_batch_sharpness_momentum': adaptive_batch_sharpness_momentum_rule,
+            'preconditioned_lambda_max': preconditioned_lambda_max_rule
         })
     
     def should_measure(self, measurement_type: str, ctx: MeasurementContext) -> bool:

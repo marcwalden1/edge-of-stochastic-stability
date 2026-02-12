@@ -64,6 +64,9 @@ def calculate_plateau_values(results_root: Path) -> List[Dict[str, Any]]:
                     'batch_sharpness',
                     'gni',
                     'full_accuracy',
+                    'adaptive_batch_sharpness',
+                    'adaptive_batch_sharpness_momentum',
+                    'lmax_preconditioned',
                 ],
                 na_values=['nan'],
                 skipinitialspace=True,
@@ -88,7 +91,9 @@ def calculate_plateau_values(results_root: Path) -> List[Dict[str, Any]]:
             }
 
             # Metrics to aggregate
-            metrics = ['batch_sharpness', 'lambda_max', 'step_sharpness', 'gni', 'full_loss']
+            metrics = ['batch_sharpness', 'lambda_max', 'step_sharpness', 'gni', 'full_loss',
+                       'adaptive_batch_sharpness', 'adaptive_batch_sharpness_momentum',
+                       'lmax_preconditioned']
             for metric in metrics:
                 if metric not in df.columns:
                     continue

@@ -83,6 +83,7 @@ class MeasurementRunner:
         X_test=None,
         Y_test=None,
         test_prediction_interval: int = 256,
+        preconditioned_eigenvector_cache=None,
     ):
         self.net = net
         self.loss_fn = loss_fn
@@ -91,6 +92,7 @@ class MeasurementRunner:
         self.device = device
         self.batch_size = batch_size
         self.eigenvector_cache = eigenvector_cache
+        self.preconditioned_eigenvector_cache = preconditioned_eigenvector_cache
         self.num_eigenvalues = num_eigenvalues
         self.use_power_iteration = use_power_iteration
         self.precise_plots = precise_plots
@@ -187,6 +189,9 @@ class MeasurementRunner:
             'quadratic_loss_gn': None,
             'proj_grad_ratio': None,
             'hessian_trace': np.nan,
+            'adaptive_batch_sharpness': np.nan,
+            'adaptive_batch_sharpness_momentum': np.nan,
+            'lmax_preconditioned': np.nan,
         }
 
         epoch_loss_update = None
@@ -206,6 +211,22 @@ class MeasurementRunner:
                     min_estimates=20,
                     eps=0.005,
                 )
+        # ----- Adaptive batch sharpness (preconditioned Rayleigh quotient) -----
+        if 'adaptive_batch_sharpness' in self.measurements:
+            if self._in_final_phase(step_number) and frequency_calculator.should_measure('adaptive_batch_sharpness', ctx):
+                metrics['adaptive_batch_sharpness'] = calculate_adaptive_batch_sharpness(
+                    self.net, self.X, self.Y, self.loss_fn, optimizer,
+                    batch_size=self.batch_size, n_estimates=1000, min_estimates=20, eps=0.005,
+                )
+
+        # ----- Adaptive batch sharpness with momentum -----
+        if 'adaptive_batch_sharpness_momentum' in self.measurements:
+            if self._in_final_phase(step_number) and frequency_calculator.should_measure('adaptive_batch_sharpness_momentum', ctx):
+                metrics['adaptive_batch_sharpness_momentum'] = calculate_adaptive_batch_sharpness_momentum(
+                    self.net, self.X, self.Y, self.loss_fn, optimizer,
+                    batch_size=self.batch_size, n_estimates=1000, min_estimates=20, eps=0.005,
+                )
+
         # ----- Instantaneous step sharpness (current-batch Rayleigh quotient) -----
         if 'step_sharpness' in self.measurements:
             if frequency_calculator.should_measure('step_sharpness', ctx):
@@ -330,6 +351,43 @@ class MeasurementRunner:
                     eps=0.01,
                 )
 
+        # ----- Preconditioned lambda max (P^{-1}H) -----
+        if 'lmax_preconditioned' in self.measurements:
+            if frequency_calculator.should_measure('preconditioned_lambda_max', ctx):
+                if str(self.device).startswith('cuda'):
+                    torch.cuda.empty_cache()
+                optimizer.zero_grad()
+
+                lmax_precond_max_size = 2048
+                if len(self.X) > lmax_precond_max_size:
+                    idx = gimme_random_subset_idx(len(self.X), lmax_precond_max_size)
+                    X_sub = self.X[idx]
+                    Y_sub = self.Y[idx]
+                else:
+                    X_sub = self.X
+                    Y_sub = self.Y
+
+                preds_pc = self.net(X_sub).squeeze(dim=-1)
+                loss_pc = self.loss_fn(preds_pc, Y_sub)
+
+                p_diag = get_preconditioner_diag(optimizer)
+                if p_diag is not None:
+                    p_inv_sqrt = (1.0 / torch.sqrt(p_diag)).clamp(max=1e6)
+
+                    ev_pc, evec_pc = compute_preconditioned_eigenvalues(
+                        loss_pc, self.net, p_inv_sqrt, k=1,
+                        max_iterations=100, reltol=0.005,
+                        eigenvector_cache=self.preconditioned_eigenvector_cache,
+                        return_eigenvectors=True,
+                    )
+                    if self.preconditioned_eigenvector_cache is not None:
+                        self.preconditioned_eigenvector_cache.store_eigenvector(evec_pc, ev_pc.item())
+
+                    metrics['lmax_preconditioned'] = ev_pc.item()
+                    print(
+                        f"Epoch {epoch + 1}, Step {step_in_epoch}: "
+                        f"Preconditioned lambda_max(P^{{-1}}H) = {metrics['lmax_preconditioned']}"
+                    )
 
         # ----- Gradient-noise interaction (GNI) -----
         gni_now = False
@@ -690,7 +748,12 @@ def train(
         if proj_top_l is not None:
             max_cache = max(max_cache, proj_top_l)
         eigenvector_cache = EigenvectorCache(max_eigenvectors=max_cache)
-    
+
+    # ----- Preconditioned Eigenvector Cache (separate coordinate space) -----
+    preconditioned_eigenvector_cache = None
+    if 'lmax_preconditioned' in measurements and cache_eigenvectors:
+        preconditioned_eigenvector_cache = EigenvectorCache(max_eigenvectors=5)
+
     # ----- Measurement Runner Wiring -----
     measurement_runner = MeasurementRunner(
         net=net,
@@ -720,6 +783,7 @@ def train(
         X_test=X_test if 'test_predictions' in measurements else None,
         Y_test=Y_test if 'test_predictions' in measurements else None,
         test_prediction_interval=test_prediction_interval,
+        preconditioned_eigenvector_cache=preconditioned_eigenvector_cache,
     )
     # ----- Run Identification -----
     run_id = wandb_run_id or generate_run_id()
@@ -1076,7 +1140,10 @@ def train(
                 msg += (
                     f"{batch_loss:7.6f}, {metrics['full_loss']:7.6f}, {metrics['lmax']:6.2f}, "
                     f"{metrics['step_sharpness']:6.1f}, {metrics['batch_sharpness']:6.1f}, "
-                    f"{metrics['gni']:6.2f}, {metrics['full_accuracy']:6.2f}"
+                    f"{metrics['gni']:6.2f}, {metrics['full_accuracy']:6.2f}, "
+                    f"{metrics['adaptive_batch_sharpness']:6.1f}, "
+                    f"{metrics['adaptive_batch_sharpness_momentum']:6.1f}, "
+                    f"{metrics['lmax_preconditioned']:6.2f}"
                 )
                 results_file.write(msg + "\n")
                 
@@ -1096,6 +1163,9 @@ def train(
                         "fisher_total_eigenval": "total_fisher_eigenval",
                         "gni": "GNI",
                         "full_accuracy": "accuracy",
+                        "adaptive_batch_sharpness": "adaptive_batch_sharpn",
+                        "adaptive_batch_sharpness_momentum": "adaptive_batch_sharpn_mom",
+                        "lmax_preconditioned": "preconditioned_lambda_max",
                     }
                     for old_key, new_key in rename_map.items():
                         if old_key in wandb_metrics:
@@ -1207,6 +1277,8 @@ if __name__ == '__main__':
     parser.add_argument('--adam', action='store_true', help='If set, use Adam optimizer instead of SGD')
     parser.add_argument('--rmsprop', type=float, nargs='?', const=0.99, default=None,
                         help='Use RMSProp optimizer with specified alpha (smoothing constant). Default alpha is 0.99 if flag used without value.')
+    parser.add_argument('--rmsprop-momentum', type=float, default=None,
+                        help='Momentum coefficient for RMSProp (requires --rmsprop)')
     parser.add_argument('--nesterov', action='store_true', help='Use Nesterov momentum with SGD (requires --momentum > 0)')
     parser.add_argument('--momentum-warmup', '--momentum_warmup', action='store_true', 
                        help='If set, use momentum=0 for first N steps, then switch to target momentum (requires --momentum)')
@@ -1216,6 +1288,8 @@ if __name__ == '__main__':
     # --- Measurement Flags (Primary) ---
     # parser.add_argument('--fullbs', action='store_true', help='If set, compute the lambda_max, aka FullBS')
     parser.add_argument('--lambdamax', '--lmax', action='store_true', help='If set, compute the lambda_max, aka FullBS')
+    parser.add_argument('--lambdamaxpreconditioned', '--lmax-precond', action='store_true',
+                        help='Compute lambda_max(P^{-1}H) for RMSProp or Adam')
     parser.add_argument('--batch-sharpness', '--batch-sharpness-step', '--bs', action='store_true', dest='batch_sharpness',
                         help='If set, compute the batch sharpness: E[gHg/g²] with the expectation taken across mini-batches. Use --batch-sharpness-step for backward compatibility.')
     parser.add_argument('--step-sharpness', action='store_true', dest='step_sharpness',
@@ -1237,6 +1311,11 @@ if __name__ == '__main__':
                         help='Restrict computation of --batch-sharpness and --lambdamax to the last X percent of total steps (e.g., 20). Range: (0, 100].')
 
     
+    parser.add_argument('--adaptive-batch-sharpness', action='store_true',
+                        help='Compute adaptive batch sharpness E[g^T P^{-1} H P^{-1} g / g^T P^{-1} g] for RMSProp')
+    parser.add_argument('--adaptive-batch-sharpness-momentum', action='store_true',
+                        help='Compute adaptive batch sharpness with momentum: E[s^T H s / g^T s] where s = beta*m + P^{-1}g')
+
     # --- Measurement Flags (Tertiary, aka almost completely useless) ---
     parser.add_argument('--batch-sharpness-exp-inside', action='store_true', help='If set, compute the batch sharpness using E[gHg]/E[g²], where the expectation is inside the ratio. Compare with step-sharpness, where the expectation stays outside the ratio.')
     parser.add_argument('--batch-lambdamax','--batchlmax', action='store_true', help='If set, compute the batch lambda_max(H_B), aka batch lambda max')
@@ -1351,6 +1430,15 @@ if __name__ == '__main__':
     if args.momentum_warmup and args.momentum is None:
         raise ValueError("--momentum-warmup requires --momentum to be specified")
 
+    if args.lambdamaxpreconditioned and not (args.adam or args.rmsprop is not None):
+        raise ValueError("--lambdamaxpreconditioned requires --rmsprop or --adam")
+
+    if args.rmsprop_momentum is not None and args.rmsprop is None:
+        raise ValueError("--rmsprop-momentum requires --rmsprop")
+
+    if args.adaptive_batch_sharpness_momentum and (args.rmsprop is None or args.rmsprop_momentum is None):
+        raise ValueError("--adaptive-batch-sharpness-momentum requires --rmsprop with --rmsprop-momentum")
+
     
     # --- Argument Validation ---
     final_percent = None
@@ -1408,6 +1496,9 @@ if __name__ == '__main__':
     ('fisher', args.fisher),
     ('param_distance', args.param_distance),
     ('hessian_trace', args.hessian_trace),
+    ('adaptive_batch_sharpness', args.adaptive_batch_sharpness),
+    ('adaptive_batch_sharpness_momentum', args.adaptive_batch_sharpness_momentum),
+    ('lmax_preconditioned', args.lambdamaxpreconditioned),
     ('trajectory_tracking', args.track_trajectory),
     ('test_predictions', args.measure_test_distance),
     ] if enabled}
@@ -1504,7 +1595,8 @@ if __name__ == '__main__':
         # param_reference = {k: v.to(device) for k, v in param_reference.items()}
 
     # ----- Optimizer Preparation -----
-    optimizer = prepare_optimizer(net, args.lr, args.momentum, args.adam, args.nesterov, rmsprop_alpha=args.rmsprop)
+    optimizer = prepare_optimizer(net, args.lr, args.momentum, args.adam, args.nesterov,
+                                  rmsprop_alpha=args.rmsprop, rmsprop_momentum=args.rmsprop_momentum)
 
     # ----- Checkpoint Cadence Determination -----
     if args.checkpoint_every is not None:
