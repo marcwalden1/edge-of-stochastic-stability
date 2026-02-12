@@ -94,7 +94,7 @@ def rolling_average(series: pd.Series, window_fraction: float = 0.02) -> pd.Seri
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="EoS plot: metrics vs steps across multiple runs.")
-    parser.add_argument("--subdir", type=str, required=True, help="Relative subdir under $RESULTS/plaintext (e.g., cifar10_mlp)")
+    parser.add_argument("--subdir", type=str, default="cifar10_mlp", help="Relative subdir under $RESULTS/plaintext (default: cifar10_mlp)")
     parser.add_argument("--batch", type=int, required=True, help="Batch size to include (e.g., 8192)")
     parser.add_argument("--lrs", type=float, nargs="+", required=False, default=[], help="List of learning rates to include (e.g., 0.02 0.01 0.0066667 0.005)")
     parser.add_argument("--runs", type=str, nargs="+", required=False, default=None, help="Explicit run folder names under the subdir (e.g., 20251210_2101_35_lr0.00667_b8192)")
@@ -109,12 +109,17 @@ def main() -> None:
 
     args = parser.parse_args()
 
-    # Default to batch sharpness only if no metric flags provided
+    # Default: plot everything if no metric flags provided
     any_metric = any([args.include_batch_sharpness, args.include_sharpness, args.include_loss,
                       args.include_adaptive_sharpness, args.include_adaptive_sharpness_momentum,
                       args.include_lmax_preconditioned])
     if not any_metric:
         args.include_batch_sharpness = True
+        args.include_sharpness = True
+        args.include_loss = True
+        args.include_adaptive_sharpness = True
+        args.include_adaptive_sharpness_momentum = True
+        args.include_lmax_preconditioned = True
 
     base_root = require_env_path('RESULTS') / 'plaintext'
     results_root = base_root / args.subdir
