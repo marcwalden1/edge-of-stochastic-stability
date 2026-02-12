@@ -143,7 +143,7 @@ def plot_metrics(df: pd.DataFrame, run: RunInfo,
     ax_top.legend(loc='upper left')
     ax_top.grid(True, alpha=0.3)
     if ylimtop is not None:
-        ax_top.set_ylim(top=ylimtop)
+        ax_top.set_ylim(bottom=0, top=ylimtop)
 
     loss_ax_top = ax_top.twinx()
     loss = df[['step', 'full_loss']].dropna()
@@ -178,7 +178,7 @@ def plot_metrics(df: pd.DataFrame, run: RunInfo,
         ax_bot.legend(loc='upper left')
         ax_bot.grid(True, alpha=0.3)
         if ylimbottom is not None:
-            ax_bot.set_ylim(top=ylimbottom)
+            ax_bot.set_ylim(bottom=0, top=ylimbottom)
 
         loss_ax_bot = ax_bot.twinx()
         if not loss.empty:
