@@ -189,6 +189,55 @@ def get_rmsprop_momentum_buffer(optimizer: T.optim.Optimizer) -> T.Tensor | None
     return T.cat(buffers) if buffers else None
 
 
+def get_preconditioner_inv(optimizer: T.optim.Optimizer) -> T.Tensor | None:
+    """Extract flattened P^{-1} vector for RMSProp or Adam.
+
+    Returns None if the optimizer is not RMSProp/Adam or state is not yet initialized.
+    """
+    if isinstance(optimizer, T.optim.RMSprop):
+        return get_rmsprop_preconditioner_inv(optimizer)
+    if isinstance(optimizer, (T.optim.Adam, T.optim.AdamW)):
+        p_diag = get_preconditioner_diag(optimizer)
+        if p_diag is None:
+            return None
+        return (1.0 / p_diag).detach().clone()
+    return None
+
+
+def get_preconditioned_momentum_buffer(optimizer: T.optim.Optimizer) -> T.Tensor | None:
+    """Extract flattened momentum buffer for adaptive sharpness: RMSProp or Adam.
+
+    For RMSProp: returns momentum_buffer (when momentum > 0).
+    For Adam: returns exp_avg (first moment).
+    Returns None if not available.
+    """
+    if isinstance(optimizer, T.optim.RMSprop):
+        return get_rmsprop_momentum_buffer(optimizer)
+    if isinstance(optimizer, (T.optim.Adam, T.optim.AdamW)):
+        buffers = []
+        for group in optimizer.param_groups:
+            for p in group['params']:
+                state = optimizer.state.get(p)
+                if state is None or 'exp_avg' not in state:
+                    return None
+                buffers.append(state['exp_avg'].flatten().detach().clone())
+        return T.cat(buffers) if buffers else None
+    return None
+
+
+def get_preconditioned_momentum_beta(optimizer: T.optim.Optimizer) -> float:
+    """Return momentum coefficient beta for s = beta*m + P^{-1}*g.
+
+    For RMSProp: param 'momentum' (e.g. 0.9).
+    For Adam: betas[0] (e.g. 0.9).
+    """
+    if isinstance(optimizer, T.optim.RMSprop):
+        return optimizer.param_groups[0].get('momentum', 0)
+    if isinstance(optimizer, (T.optim.Adam, T.optim.AdamW)):
+        return optimizer.param_groups[0]['betas'][0]
+    return 0.0
+
+
 def get_preconditioner_diag(optimizer: T.optim.Optimizer) -> T.Tensor | None:
     """Extract flattened diagonal of the preconditioner P as a 1D tensor.
 
@@ -1207,23 +1256,25 @@ def calculate_adaptive_batch_sharpness_momentum(net, X, Y, loss_fn, optimizer,
                                                 min_estimates=20, eps=0.005):
     """Compute adaptive batch sharpness with momentum: E[s^T H_B s / g^T s].
 
-    Here s = beta*m + P^{-1}*g where m is the current momentum buffer and
-    P^{-1} is the RMSProp preconditioner inverse.  When beta=0 this reduces
-    to the non-momentum adaptive batch sharpness.
+    Here s = beta*m + P^{-1}*g where m is the momentum buffer (RMSProp momentum_buffer
+    or Adam exp_avg) and P^{-1} is the preconditioner inverse. When beta=0 this
+    reduces to the non-momentum adaptive batch sharpness.
+
+    Supports RMSProp (with momentum) and Adam.
 
     Returns:
         float: Estimated value, or np.nan if preconditioner/momentum buffer
                is not available.
     """
-    preconditioner_inv = get_rmsprop_preconditioner_inv(optimizer)
+    preconditioner_inv = get_preconditioner_inv(optimizer)
     if preconditioner_inv is None:
         return np.nan
 
-    momentum_buffer = get_rmsprop_momentum_buffer(optimizer)
+    momentum_buffer = get_preconditioned_momentum_buffer(optimizer)
     if momentum_buffer is None:
         return np.nan
 
-    beta = optimizer.param_groups[0].get('momentum', 0)
+    beta = get_preconditioned_momentum_beta(optimizer)
 
     numerators = []
     denominators = []

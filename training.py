@@ -1274,7 +1274,8 @@ if __name__ == '__main__':
 
     # --- Optimizer Variants ---
     parser.add_argument('--momentum', type=float, default=None, help='Momentum for SGD optimizer')
-    parser.add_argument('--adam', action='store_true', help='If set, use Adam optimizer instead of SGD')
+    parser.add_argument('--adam', type=float, nargs='*', default=None, metavar=('BETA1', 'BETA2'),
+                        help='Use Adam optimizer. Use --adam for defaults (0.9, 0.99) or --adam BETA1 BETA2')
     parser.add_argument('--rmsprop', type=float, nargs='?', const=0.99, default=None,
                         help='Use RMSProp optimizer with specified alpha (smoothing constant). Default alpha is 0.99 if flag used without value.')
     parser.add_argument('--rmsprop-momentum', type=float, default=None,
@@ -1382,6 +1383,15 @@ if __name__ == '__main__':
     # ----- Argument Parsing -----
     args = parser.parse_args()
 
+    # ----- Adam betas normalization -----
+    if args.adam is not None:
+        if len(args.adam) == 0:
+            args.adam = (0.9, 0.99)
+        elif len(args.adam) == 2:
+            args.adam = tuple(args.adam)
+        else:
+            raise ValueError("--adam expects 0 or 2 values (beta1, beta2)")
+
     # ----- wandb Availability Check -----
     wandb_installed = is_wandb_available()
     if not wandb_installed and not args.disable_wandb:
@@ -1436,8 +1446,12 @@ if __name__ == '__main__':
     if args.rmsprop_momentum is not None and args.rmsprop is None:
         raise ValueError("--rmsprop-momentum requires --rmsprop")
 
-    if args.adaptive_batch_sharpness_momentum and (args.rmsprop is None or args.rmsprop_momentum is None):
-        raise ValueError("--adaptive-batch-sharpness-momentum requires --rmsprop with --rmsprop-momentum")
+    if args.adaptive_batch_sharpness_momentum:
+        has_rmsprop_momentum = args.rmsprop is not None and args.rmsprop_momentum is not None
+        if not (has_rmsprop_momentum or args.adam):
+            raise ValueError(
+                "--adaptive-batch-sharpness-momentum requires --rmsprop with --rmsprop-momentum, or --adam"
+            )
 
     
     # --- Argument Validation ---

@@ -454,7 +454,9 @@ def prepare_optimizer(net, lr, momentum, adam, nesterov: bool = False,
     if adam:
         if momentum is not None:
             raise ValueError("Momentum is not supported for Adam, just because. Change the code if you need to change the params in Adam")
-        return T.optim.Adam(net.parameters(), lr=lr, betas=(0.9, 0.999))
+        # adam is (beta1, beta2) when Adam is used
+        betas = adam if isinstance(adam, tuple) else (0.9, 0.99)
+        return T.optim.Adam(net.parameters(), lr=lr, betas=betas)
     
     if momentum is not None:
         # PyTorch expects the keyword 'nesterov' (lowercase) and requires momentum > 0
