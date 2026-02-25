@@ -1,4 +1,5 @@
 # custom
+wandb_checkpoints/
 slurm
 random
 .vscode
