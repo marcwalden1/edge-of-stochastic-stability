@@ -14,7 +14,7 @@ def get_welcome_string(args):
     msg = f"""# Edge of Stochastic Stability.
 # Dataset: {args.dataset}, model {args.model}, lr {args.lr}, batch size {args.batch}, gd_noise {args.gd_noise}
 # Arguments: {str(args)}
-# (0) epoch, (1) step, (2) batch loss, (3) full loss, (4) lambda max, (5) step sharpness, (6) batch sharpness, (7) Gradient-Noise Interaction, (8) total accuracy"""
+# (0) epoch, (1) step, (2) batch loss, (3) full loss, (4) lambda max, (5) step sharpness, (6) batch sharpness, (7) Gradient-Noise Interaction, (8) total accuracy, (9) adaptive_batch_sharpness, (10) adaptive_batch_sharpness_momentum, (11) lmax_preconditioned"""
     return msg
 
 
