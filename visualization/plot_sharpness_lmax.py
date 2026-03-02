@@ -108,25 +108,38 @@ def load_results(run: RunInfo) -> pd.DataFrame:
 
 
 def plot_metrics(df: pd.DataFrame, run: RunInfo,
-                 ylimtop: float = None, ylimbottom: float = None) -> plt.Figure:
+                 ylimtop: float = None, ylimbottom: float = None,
+                 show_gbs: bool = False) -> plt.Figure:
     """Plot batch sharpness and lambda_max vs training steps.
 
-    Top subplot: batch sharpness, lambda_max, loss (always shown).
-    Bottom subplot: adaptive sharpness, adaptive sharpness (momentum),
-    lmax_preconditioned, loss (only if any preconditioned data exists).
+    Top subplot:    batch sharpness, lambda_max, loss (always shown).
+    Middle subplot: adaptive sharpness, lmax_preconditioned, loss
+                    (only if any preconditioned data exists).
+    Bottom subplot: GBS with y=2 reference line (only if show_gbs=True
+                    and the gbs column has non-NaN data).
     """
-    # Check if any preconditioned or GBS data exists
-    has_preconditioned = False
-    for col in ('adaptive_batch_sharpness', 'adaptive_batch_sharpness_momentum',
-                'lmax_preconditioned', 'gbs'):
-        if col in df.columns and df[col].notna().any():
-            has_preconditioned = True
+    has_preconditioned = any(
+        col in df.columns and df[col].notna().any()
+        for col in ('adaptive_batch_sharpness', 'adaptive_batch_sharpness_momentum',
+                    'lmax_preconditioned')
+    )
+    has_gbs = (
+        show_gbs
+        and 'gbs' in df.columns
+        and df['gbs'].notna().any()
+    )
 
-    if has_preconditioned:
-        fig, (ax_top, ax_bot) = plt.subplots(2, 1, figsize=(10, 9), sharex=True)
-    else:
-        fig, ax_top = plt.subplots(figsize=(10, 5))
-        ax_bot = None
+    n_subplots = 1 + int(has_preconditioned) + int(has_gbs)
+    height = 5 * n_subplots - (1 if n_subplots > 1 else 0)  # 5, 9, 13
+    fig, axes = plt.subplots(n_subplots, 1, figsize=(10, height), sharex=True)
+    if n_subplots == 1:
+        axes = [axes]
+
+    ax_top = axes[0]
+    ax_bot = axes[1] if has_preconditioned else None
+    ax_gbs = axes[-1] if has_gbs else None
+
+    loss = df[['step', 'full_loss']].dropna()
 
     # --- Top subplot: batch sharpness, lambda_max, loss ---
     batch_sharp = df[['step', 'batch_sharpness']].dropna()
@@ -148,14 +161,13 @@ def plot_metrics(df: pd.DataFrame, run: RunInfo,
         ax_top.set_ylim(bottom=0, top=ylimtop)
 
     loss_ax_top = ax_top.twinx()
-    loss = df[['step', 'full_loss']].dropna()
     if not loss.empty:
         loss_ax_top.plot(loss['step'], loss['full_loss'], color='gray', alpha=0.3, label='loss')
         loss_ax_top.set_yscale('log')
         loss_ax_top.set_ylabel('Loss (log)')
         loss_ax_top.legend(loc='upper right')
 
-    # --- Bottom subplot: preconditioned metrics + loss ---
+    # --- Middle subplot: preconditioned metrics + loss ---
     if ax_bot is not None:
         if 'adaptive_batch_sharpness' in df.columns:
             abs_data = df[['step', 'adaptive_batch_sharpness']].dropna()
@@ -175,15 +187,6 @@ def plot_metrics(df: pd.DataFrame, run: RunInfo,
                 ax_bot.plot(lmax_pc['step'], lmax_pc['lmax_preconditioned'],
                             label=r'$\lambda_{max}(P^{-1}H)$', color='#9467bd')
 
-        if 'gbs' in df.columns:
-            gbs_data = df[['step', 'gbs']].dropna()
-            if not gbs_data.empty:
-                ax_bot.plot(gbs_data['step'], gbs_data['gbs'],
-                            label='GBS', color='#17becf')
-                ax_bot.axhline(y=2, color='#17becf', linestyle='--', alpha=0.4,
-                               label='GBS=2 (EoS)')
-
-        ax_bot.set_xlabel('steps')
         ax_bot.set_ylabel('sharpness')
         ax_bot.legend(loc='upper left')
         ax_bot.grid(True, alpha=0.3)
@@ -196,9 +199,26 @@ def plot_metrics(df: pd.DataFrame, run: RunInfo,
             loss_ax_bot.set_yscale('log')
             loss_ax_bot.set_ylabel('Loss (log)')
             loss_ax_bot.legend(loc='upper right')
-    else:
-        ax_top.set_xlabel('steps')
 
+    # --- GBS subplot ---
+    if ax_gbs is not None:
+        gbs_data = df[['step', 'gbs']].dropna()
+        ax_gbs.plot(gbs_data['step'], gbs_data['gbs'],
+                    label='GBS', color='#17becf')
+        ax_gbs.axhline(y=2, color='#17becf', linestyle='--', alpha=0.5,
+                       label='GBS = 2 (EoS)')
+        ax_gbs.set_ylabel('GBS')
+        ax_gbs.legend(loc='upper left')
+        ax_gbs.grid(True, alpha=0.3)
+
+        loss_ax_gbs = ax_gbs.twinx()
+        if not loss.empty:
+            loss_ax_gbs.plot(loss['step'], loss['full_loss'], color='gray', alpha=0.3, label='loss')
+            loss_ax_gbs.set_yscale('log')
+            loss_ax_gbs.set_ylabel('Loss (log)')
+            loss_ax_gbs.legend(loc='upper right')
+
+    axes[-1].set_xlabel('steps')
     plt.tight_layout()
     return fig
 
@@ -227,7 +247,11 @@ def main() -> None:
                         help="Upper y-axis limit for top subplot (e.g., 500)")
     parser.add_argument("--ylimbottom", type=float, default=None,
                         help="Upper y-axis limit for bottom subplot (e.g., 100)")
+    parser.add_argument("--GBS", "--gbs", action="store_true", dest="gbs",
+                        help="Add a dedicated GBS subplot below the other plots")
     args = parser.parse_args()
+
+    plot_kw = dict(ylimtop=args.ylimtop, ylimbottom=args.ylimbottom, show_gbs=args.gbs)
 
     if args.run:
         # Plot a specific run
@@ -236,7 +260,7 @@ def main() -> None:
             raise ResultsConfigError(f"Run folder not found: {folder}")
         run = parse_run_info(folder)
         df = load_results(run)
-        fig = plot_metrics(df, run, ylimtop=args.ylimtop, ylimbottom=args.ylimbottom)
+        fig = plot_metrics(df, run, **plot_kw)
         output_path = save_figure(fig, run)
         print(f"Plot saved to: {output_path}")
     elif args.all:
@@ -255,7 +279,7 @@ def main() -> None:
             except ResultsConfigError:
                 continue
 
-            fig = plot_metrics(df, run, ylimtop=args.ylimtop, ylimbottom=args.ylimbottom)
+            fig = plot_metrics(df, run, **plot_kw)
             output_path = save_figure(fig, run)
             print(f"Plot saved to: {output_path}")
             any_plotted = True
@@ -269,7 +293,7 @@ def main() -> None:
         print(f"Using the most recent folder: {run.folder}")
 
         df = load_results(run)
-        fig = plot_metrics(df, run, ylimtop=args.ylimtop, ylimbottom=args.ylimbottom)
+        fig = plot_metrics(df, run, **plot_kw)
         output_path = save_figure(fig, run)
         print(f"Plot saved to: {output_path}")
 
