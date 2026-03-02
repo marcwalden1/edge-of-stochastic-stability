@@ -192,6 +192,7 @@ class MeasurementRunner:
             'adaptive_batch_sharpness': np.nan,
             'adaptive_batch_sharpness_momentum': np.nan,
             'lmax_preconditioned': np.nan,
+            'gbs': np.nan,
         }
 
         epoch_loss_update = None
@@ -234,6 +235,14 @@ class MeasurementRunner:
                 preds = self.net(X_batch).squeeze(dim=-1)
                 loss = self.loss_fn(preds, Y_batch)
                 metrics['step_sharpness'] = compute_grad_H_grad(loss, self.net).item()
+
+        # ----- Generalized Batch Sharpness (GBS) -----
+        if 'gbs' in self.measurements:
+            if self._in_final_phase(step_number) and frequency_calculator.should_measure('gbs', ctx):
+                metrics['gbs'] = calculate_gbs(
+                    self.net, self.X, self.Y, self.loss_fn, optimizer,
+                    batch_size=self.batch_size, n_estimates=1000, min_estimates=20, eps=0.005,
+                )
 
         # ----- Eigenvalues/Lambda max (full batch) -----
         lmax_now = False
@@ -1135,15 +1144,16 @@ def train(
             # Section: Logging (Step)
             # -------------------------------------
             if True: # not results_rarely or (results_rarely and ghg_now):
-                # (0) epoch, (1) step, (2) batch loss, (3) full loss, (4) lambda max, (5) step sharpness, (6) batch sharpness, (7) Gradient-Noise Interaction, (8) total accuracy"""
-                # Log metrics   
+                # (0) epoch, (1) step, (2) batch loss, (3) full loss, (4) lambda max, (5) step sharpness, (6) batch sharpness, (7) Gradient-Noise Interaction, (8) total accuracy, (9) adaptive_batch_sharpness, (10) adaptive_batch_sharpness_momentum, (11) lmax_preconditioned, (12) gbs"""
+                # Log metrics
                 msg += (
                     f"{batch_loss:7.6f}, {metrics['full_loss']:7.6f}, {metrics['lmax']:6.2f}, "
                     f"{metrics['step_sharpness']:6.1f}, {metrics['batch_sharpness']:6.1f}, "
                     f"{metrics['gni']:6.2f}, {metrics['full_accuracy']:6.2f}, "
                     f"{metrics['adaptive_batch_sharpness']:6.1f}, "
                     f"{metrics['adaptive_batch_sharpness_momentum']:6.1f}, "
-                    f"{metrics['lmax_preconditioned']:6.2f}"
+                    f"{metrics['lmax_preconditioned']:6.2f}, "
+                    f"{metrics['gbs']:6.3f}"
                 )
                 results_file.write(msg + "\n")
                 
@@ -1166,6 +1176,7 @@ def train(
                         "adaptive_batch_sharpness": "adaptive_batch_sharpn",
                         "adaptive_batch_sharpness_momentum": "adaptive_batch_sharpn_mom",
                         "lmax_preconditioned": "preconditioned_lambda_max",
+                        "gbs": "GBS",
                     }
                     for old_key, new_key in rename_map.items():
                         if old_key in wandb_metrics:
@@ -1295,6 +1306,9 @@ if __name__ == '__main__':
                         help='If set, compute the batch sharpness: E[gHg/g²] with the expectation taken across mini-batches. Use --batch-sharpness-step for backward compatibility.')
     parser.add_argument('--step-sharpness', action='store_true', dest='step_sharpness',
                         help='If set, compute the step sharpness: the current-mini-batch Rayleigh quotient g·Hg/g². Average across steps to recover the traditional batch sharpness.')
+    parser.add_argument('--GBS', '--gbs', action='store_true', dest='gbs',
+                        help='Compute Generalized Batch Sharpness GBS = E[s^T H s] / (-E[s^T g]). '
+                             'Stabilizes at ~2 at the edge of stability for any optimizer.')
     parser.add_argument('--gni', action='store_true', help='If set, compute the Gradient-Noise Interaction quantity.')
     parser.add_argument('--cosine-similarity', action='store_true',
                         help='Track cosine similarity between consecutive gradients and gradient-momentum')
@@ -1513,6 +1527,7 @@ if __name__ == '__main__':
     ('adaptive_batch_sharpness', args.adaptive_batch_sharpness),
     ('adaptive_batch_sharpness_momentum', args.adaptive_batch_sharpness_momentum),
     ('lmax_preconditioned', args.lambdamaxpreconditioned),
+    ('gbs', args.gbs),
     ('trajectory_tracking', args.track_trajectory),
     ('test_predictions', args.measure_test_distance),
     ] if enabled}

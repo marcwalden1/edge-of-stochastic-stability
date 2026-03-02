@@ -1332,6 +1332,209 @@ def calculate_adaptive_batch_sharpness_momentum(net, X, Y, loss_fn, optimizer,
 
 ################################################################################
 #                                                                              #
+#                  GENERALIZED BATCH SHARPNESS (GBS)                           #
+#                                                                              #
+################################################################################
+
+
+def _build_gbs_step(g_flat_detached, optimizer):
+    """Build the predicted optimizer step s_B from the current optimizer state.
+
+    Args:
+        g_flat_detached: Flattened, detached batch gradient.
+        optimizer: Optimizer (SGD / Adam / AdamW / RMSProp).
+
+    Returns:
+        Flattened, detached step tensor s_B.
+    """
+    param_groups = optimizer.param_groups
+    state = optimizer.state
+
+    # Collect per-parameter pieces in traversal order
+    step_pieces = []
+
+    if isinstance(optimizer, torch.optim.SGD):
+        for group in param_groups:
+            lr = group['lr']
+            momentum = group.get('momentum', 0.0)
+            dampening = group.get('dampening', 0.0)
+            for p in group['params']:
+                if p.grad is None and p not in state:
+                    numel = p.numel()
+                    # Slice corresponding segment from g_flat_detached
+                    step_pieces.append(torch.zeros(numel, device=g_flat_detached.device,
+                                                   dtype=g_flat_detached.dtype))
+                    continue
+                numel = p.numel()
+
+        # Re-traverse to build actual step (need running offset into g_flat)
+        step_pieces = []
+        offset = 0
+        for group in param_groups:
+            lr = group['lr']
+            momentum = group.get('momentum', 0.0)
+            dampening = group.get('dampening', 0.0)
+            for p in group['params']:
+                numel = p.numel()
+                g_p = g_flat_detached[offset:offset + numel]
+                offset += numel
+                if momentum == 0.0:
+                    s_p = -lr * g_p
+                else:
+                    p_state = state.get(p, {})
+                    buf = p_state.get('momentum_buffer', None)
+                    if buf is None:
+                        v_t = torch.zeros_like(g_p)
+                    else:
+                        v_t = buf.flatten().detach().clone()
+                    v_next = momentum * v_t + (1.0 - dampening) * g_p
+                    s_p = -lr * v_next
+                step_pieces.append(s_p)
+
+    elif isinstance(optimizer, (torch.optim.Adam, torch.optim.AdamW)):
+        offset = 0
+        for group in param_groups:
+            lr = group['lr']
+            beta1, beta2 = group['betas']
+            eps = group['eps']
+            for p in group['params']:
+                numel = p.numel()
+                g_p = g_flat_detached[offset:offset + numel]
+                offset += numel
+                p_state = state.get(p, {})
+                step_t = p_state.get('step', torch.tensor(0))
+                if isinstance(step_t, torch.Tensor):
+                    step_t = int(step_t.item())
+                m_t = p_state.get('exp_avg', torch.zeros_like(g_p))
+                v_sq_t = p_state.get('exp_avg_sq', torch.zeros_like(g_p))
+                m_t = m_t.flatten().detach().clone()
+                v_sq_t = v_sq_t.flatten().detach().clone()
+                step_next = step_t + 1
+                m_next = beta1 * m_t + (1.0 - beta1) * g_p
+                v_sq_next = beta2 * v_sq_t + (1.0 - beta2) * g_p ** 2
+                m_hat = m_next / (1.0 - beta1 ** step_next)
+                v_hat = v_sq_next / (1.0 - beta2 ** step_next)
+                s_p = -lr * m_hat / (torch.sqrt(v_hat) + eps)
+                step_pieces.append(s_p)
+
+    elif isinstance(optimizer, torch.optim.RMSprop):
+        offset = 0
+        for group in param_groups:
+            lr = group['lr']
+            alpha = group.get('alpha', 0.99)
+            eps = group.get('eps', 1e-8)
+            mom = group.get('momentum', 0.0)
+            for p in group['params']:
+                numel = p.numel()
+                g_p = g_flat_detached[offset:offset + numel]
+                offset += numel
+                p_state = state.get(p, {})
+                sq_t = p_state.get('square_avg', torch.ones_like(g_p))
+                sq_t = sq_t.flatten().detach().clone()
+                sq_next = alpha * sq_t + (1.0 - alpha) * g_p ** 2
+                if mom == 0.0:
+                    s_p = -lr * g_p / (torch.sqrt(sq_next) + eps)
+                else:
+                    b_t = p_state.get('momentum_buffer', torch.zeros_like(g_p))
+                    b_t = b_t.flatten().detach().clone()
+                    b_next = mom * b_t + g_p / (torch.sqrt(sq_next) + eps)
+                    s_p = -lr * b_next
+                step_pieces.append(s_p)
+
+    else:
+        raise ValueError(
+            f"_build_gbs_step: unsupported optimizer type {type(optimizer).__name__}. "
+            "Supported: SGD, Adam, AdamW, RMSprop."
+        )
+
+    return torch.cat(step_pieces).detach()
+
+
+def compute_gbs_per_batch(loss, net, optimizer):
+    """Compute (s_B^T H_B s_B,  s_B^T g_B) for a single batch.
+
+    GBS = E[s^T H s] / (−E[s^T g]).
+
+    Args:
+        loss: Scalar batch loss (must retain computational graph).
+        net: Neural network model.
+        optimizer: Optimizer (SGD/Adam/RMSProp) — used to build predicted step s_B.
+
+    Returns:
+        Tuple[Tensor, Tensor]: (s_B^T H_B s_B,  s_B^T g_B) as scalar tensors.
+    """
+    params = list(net.parameters())
+    grads = torch.autograd.grad(loss, params, create_graph=True)
+    g_flat = flatt(grads)               # has graph
+    g_det  = g_flat.detach()            # no graph
+
+    s_flat = _build_gbs_step(g_det, optimizer)  # detached
+
+    scalar = T.dot(g_flat, s_flat)      # has graph through g_flat
+    Hs = torch.autograd.grad(scalar, params, retain_graph=False)
+    Hs_flat = flatt(Hs).detach()
+
+    return T.dot(s_flat, Hs_flat), T.dot(g_det, s_flat)   # (s^T H s,  s^T g)
+
+
+def calculate_gbs(net, X, Y, loss_fn, optimizer,
+                  batch_size, n_estimates=1000, min_estimates=20, eps=0.005):
+    """Compute GBS = E_B[s_B^T H_B s_B] / (−E_B[s_B^T g_B]).
+
+    Monte Carlo estimator with delta-method convergence check.
+    Returns float or np.nan if optimizer not supported or denominator is near zero.
+    """
+    try:
+        # Quick check: will _build_gbs_step work for this optimizer?
+        _supported = (torch.optim.SGD, torch.optim.Adam, torch.optim.AdamW,
+                      torch.optim.RMSprop)
+        if not isinstance(optimizer, _supported):
+            return np.nan
+    except Exception:
+        return np.nan
+
+    rng = gimme_new_rng()
+    numerators = []      # s^T H s   (positive)
+    denom_negs = []      # −s^T g    (positive for descent steps)
+
+    if batch_size > 128 and torch.cuda.is_available():
+        torch.cuda.empty_cache()
+
+    for i in range(n_estimates):
+        idx = T.randperm(len(X), generator=rng)[:batch_size]
+        loss = loss_fn(net(X[idx]).squeeze(dim=-1), Y[idx])
+
+        sHs, sg = compute_gbs_per_batch(loss, net, optimizer)
+        numerators.append(sHs.item())
+        denom_negs.append(-sg.item())   # negate so denominator values > 0
+
+        if i < min_estimates:
+            continue
+
+        # Delta-method RSE check on R = mean(num) / mean(denom_neg)
+        x_vals, y_vals = numerators, denom_negs
+        mean_x, mean_y = np.mean(x_vals), np.mean(y_vals)
+        if abs(mean_y) < 1e-12:
+            break
+        var_x   = np.var(x_vals, ddof=1)
+        var_y   = np.var(y_vals, ddof=1)
+        cov_xy  = np.cov(x_vals, y_vals, ddof=1)[0, 1]
+        R       = mean_x / mean_y
+        var_R   = (var_x / mean_y**2
+                   - 2 * cov_xy * mean_x / mean_y**3
+                   + var_y * mean_x**2 / mean_y**4) / (i + 1)
+        rse = np.sqrt(max(var_R, 0)) / abs(R) if abs(R) > 1e-12 else float('inf')
+        if rse < eps:
+            break
+
+    if len(numerators) == 0 or abs(np.mean(denom_negs)) < 1e-12:
+        return np.nan
+
+    return float(np.mean(numerators) / np.mean(denom_negs))
+
+
+################################################################################
+#                                                                              #
 #                       GRADIENT–NOISE INTERACTION (GNI)                       #
 #                                                                              #
 ################################################################################

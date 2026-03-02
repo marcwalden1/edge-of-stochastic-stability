@@ -41,6 +41,7 @@ COLUMN_NAMES = [
     "adaptive_batch_sharpness",
     "adaptive_batch_sharpness_momentum",
     "lmax_preconditioned",
+    "gbs",
 ]
 
 
@@ -114,9 +115,10 @@ def plot_metrics(df: pd.DataFrame, run: RunInfo,
     Bottom subplot: adaptive sharpness, adaptive sharpness (momentum),
     lmax_preconditioned, loss (only if any preconditioned data exists).
     """
-    # Check if any preconditioned data exists
+    # Check if any preconditioned or GBS data exists
     has_preconditioned = False
-    for col in ('adaptive_batch_sharpness', 'adaptive_batch_sharpness_momentum', 'lmax_preconditioned'):
+    for col in ('adaptive_batch_sharpness', 'adaptive_batch_sharpness_momentum',
+                'lmax_preconditioned', 'gbs'):
         if col in df.columns and df[col].notna().any():
             has_preconditioned = True
 
@@ -172,6 +174,14 @@ def plot_metrics(df: pd.DataFrame, run: RunInfo,
             if not lmax_pc.empty:
                 ax_bot.plot(lmax_pc['step'], lmax_pc['lmax_preconditioned'],
                             label=r'$\lambda_{max}(P^{-1}H)$', color='#9467bd')
+
+        if 'gbs' in df.columns:
+            gbs_data = df[['step', 'gbs']].dropna()
+            if not gbs_data.empty:
+                ax_bot.plot(gbs_data['step'], gbs_data['gbs'],
+                            label='GBS', color='#17becf')
+                ax_bot.axhline(y=2, color='#17becf', linestyle='--', alpha=0.4,
+                               label='GBS=2 (EoS)')
 
         ax_bot.set_xlabel('steps')
         ax_bot.set_ylabel('sharpness')

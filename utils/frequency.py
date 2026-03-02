@@ -341,6 +341,12 @@ class FrequencyCalculator:
             freq = _rare_scale(ctx, freq, heavy=False)
             return ctx.step_number % freq == 0
 
+        def gbs_rule(ctx: MeasurementContext) -> bool:
+            """GBS frequency rule — same cadence as batch_sharpness."""
+            freq = 256
+            freq = _rare_scale(ctx, freq, heavy=False)
+            return ctx.step_number % freq == 0
+
         def preconditioned_lambda_max_rule(ctx: MeasurementContext) -> bool:
             """Preconditioned lambda_max(P^{-1}H) frequency rule — same cadence as full-batch lambda max."""
             freq = 256
@@ -387,7 +393,8 @@ class FrequencyCalculator:
             'trajectory_tracking': trajectory_tracking_rule,
             'adaptive_batch_sharpness': adaptive_batch_sharpness_rule,
             'adaptive_batch_sharpness_momentum': adaptive_batch_sharpness_momentum_rule,
-            'preconditioned_lambda_max': preconditioned_lambda_max_rule
+            'preconditioned_lambda_max': preconditioned_lambda_max_rule,
+            'gbs': gbs_rule
         })
     
     def should_measure(self, measurement_type: str, ctx: MeasurementContext) -> bool:
