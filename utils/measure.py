@@ -1340,11 +1340,15 @@ def calculate_adaptive_batch_sharpness_momentum(net, X, Y, loss_fn, optimizer,
 
 
 def _build_gbs_step(g_flat_detached, optimizer):
-    """Build the predicted optimizer step s_B from the current optimizer state.
+    """Build the actual current optimizer step s_B from the frozen optimizer state.
+
+    The step vector is frozen: momentum/gradient buffers are NOT updated with the
+    measurement batch gradient g_B, so s_B is the same fixed value for every
+    measurement batch.
 
     Args:
         g_flat_detached: Flattened, detached batch gradient.
-        optimizer: Optimizer (SGD / Adam / AdamW / RMSProp).
+        optimizer: Optimizer (SGD / Adam / AdamW / RMSProp / Muon).
 
     Returns:
         Flattened, detached step tensor s_B.
@@ -1389,8 +1393,7 @@ def _build_gbs_step(g_flat_detached, optimizer):
                         v_t = torch.zeros_like(g_p)
                     else:
                         v_t = buf.flatten().detach().clone()
-                    v_next = momentum * v_t + (1.0 - dampening) * g_p
-                    s_p = -lr * v_next
+                    s_p = -lr * v_t
                 step_pieces.append(s_p)
 
     elif isinstance(optimizer, (torch.optim.Adam, torch.optim.AdamW)):
@@ -1411,12 +1414,12 @@ def _build_gbs_step(g_flat_detached, optimizer):
                 v_sq_t = p_state.get('exp_avg_sq', torch.zeros_like(g_p))
                 m_t = m_t.flatten().detach().clone()
                 v_sq_t = v_sq_t.flatten().detach().clone()
-                step_next = step_t + 1
-                m_next = beta1 * m_t + (1.0 - beta1) * g_p
-                v_sq_next = beta2 * v_sq_t + (1.0 - beta2) * g_p ** 2
-                m_hat = m_next / (1.0 - beta1 ** step_next)
-                v_hat = v_sq_next / (1.0 - beta2 ** step_next)
-                s_p = -lr * m_hat / (torch.sqrt(v_hat) + eps)
+                if step_t == 0:
+                    s_p = -lr * g_p
+                else:
+                    m_hat = m_t / (1.0 - beta1 ** step_t)
+                    v_hat = v_sq_t / (1.0 - beta2 ** step_t)
+                    s_p = -lr * m_hat / (torch.sqrt(v_hat) + eps)
                 step_pieces.append(s_p)
 
     elif isinstance(optimizer, torch.optim.RMSprop):
@@ -1433,14 +1436,12 @@ def _build_gbs_step(g_flat_detached, optimizer):
                 p_state = state.get(p, {})
                 sq_t = p_state.get('square_avg', torch.ones_like(g_p))
                 sq_t = sq_t.flatten().detach().clone()
-                sq_next = alpha * sq_t + (1.0 - alpha) * g_p ** 2
                 if mom == 0.0:
-                    s_p = -lr * g_p / (torch.sqrt(sq_next) + eps)
+                    s_p = -lr * g_p / (torch.sqrt(sq_t) + eps)
                 else:
                     b_t = p_state.get('momentum_buffer', torch.zeros_like(g_p))
                     b_t = b_t.flatten().detach().clone()
-                    b_next = mom * b_t + g_p / (torch.sqrt(sq_next) + eps)
-                    s_p = -lr * b_next
+                    s_p = -lr * b_t
                 step_pieces.append(s_p)
 
     elif isinstance(optimizer, Muon):
@@ -1460,11 +1461,10 @@ def _build_gbs_step(g_flat_detached, optimizer):
                     buf_t = torch.zeros_like(g_p)
                 else:
                     buf_t = buf.flatten().detach().clone()
-                buf_next = mom * buf_t + g_p
                 if nesterov:
-                    g_eff = g_p + mom * buf_next
+                    g_eff = g_p + mom * buf_t
                 else:
-                    g_eff = buf_next
+                    g_eff = buf_t
                 if p.ndim >= 2:
                     g_2d = g_eff.view(p.shape[0], -1)
                     update = zeropower_via_newtonschulz5(g_2d, steps=ns_steps).flatten()
