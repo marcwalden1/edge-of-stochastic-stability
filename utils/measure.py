@@ -31,7 +31,8 @@ __all__ = ['param_vector', 'param_length', 'flatt', 'grads_vector',
            'compute_adaptive_grad_H_grad', 'compute_adaptive_grad_H_grad_momentum',
            'calculate_adaptive_batch_sharpness', 'calculate_adaptive_batch_sharpness_momentum',
            'get_preconditioner_diag', 'create_preconditioned_hessian_vector_product',
-           'compute_preconditioned_eigenvalues']
+           'compute_preconditioned_eigenvalues',
+           'calculate_gbs', 'compute_gbs_per_batch', '_build_gbs_step']
 
 
 class EigenvectorCache:
