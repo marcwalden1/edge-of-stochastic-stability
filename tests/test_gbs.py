@@ -18,7 +18,7 @@ from utils.measure import (
     flatt,
 )
 from utils.frequency import frequency_calculator, MeasurementContext
-from utils.muon import Muon
+from utils.nets import Muon
 
 
 # ---------------------------------------------------------------------------

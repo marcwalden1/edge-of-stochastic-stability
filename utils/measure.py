@@ -2,7 +2,7 @@ import torch as T
 import torch
 import torch.nn as nn
 from einops import rearrange, repeat
-from utils.muon import Muon, zeropower_via_newtonschulz5
+from utils.nets import Muon, zeropower_via_newtonschulz5
 from torch import linalg as LA
 import numpy as np
 from typing import List, Optional
