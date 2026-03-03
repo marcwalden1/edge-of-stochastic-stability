@@ -97,12 +97,13 @@ def load_results(run: RunInfo) -> pd.DataFrame:
 
     df = pd.read_csv(
         file_path,
-        skiprows=4,
+        comment='#',
         sep=',',
         header=None,
         names=COLUMN_NAMES,
         na_values=['nan'],
         skipinitialspace=True,
+        engine='python',
     )
     return df
 
@@ -123,11 +124,7 @@ def plot_metrics(df: pd.DataFrame, run: RunInfo,
         for col in ('adaptive_batch_sharpness', 'adaptive_batch_sharpness_momentum',
                     'lmax_preconditioned')
     )
-    has_gbs = (
-        show_gbs
-        and 'gbs' in df.columns
-        and df['gbs'].notna().any()
-    )
+    has_gbs = show_gbs  # always show subplot when requested; data may be empty
 
     n_subplots = 1 + int(has_preconditioned) + int(has_gbs)
     height = 5 * n_subplots - (1 if n_subplots > 1 else 0)  # 5, 9, 13
@@ -202,13 +199,19 @@ def plot_metrics(df: pd.DataFrame, run: RunInfo,
 
     # --- GBS subplot ---
     if ax_gbs is not None:
-        gbs_data = df[['step', 'gbs']].dropna()
-        ax_gbs.plot(gbs_data['step'], gbs_data['gbs'],
-                    label='GBS', color='#17becf')
-        ax_gbs.axhline(y=2, color='#17becf', linestyle='--', alpha=0.5,
-                       label='GBS = 2 (EoS)')
+        gbs_data = df[['step', 'gbs']].dropna() if 'gbs' in df.columns else pd.DataFrame()
+        if gbs_data.empty:
+            ax_gbs.text(0.5, 0.5,
+                        'No GBS data\nRe-run training with --GBS to compute it',
+                        transform=ax_gbs.transAxes, ha='center', va='center',
+                        fontsize=11, color='gray', style='italic')
+        else:
+            ax_gbs.plot(gbs_data['step'], gbs_data['gbs'],
+                        label='GBS', color='#17becf')
+            ax_gbs.axhline(y=2, color='#17becf', linestyle='--', alpha=0.5,
+                           label='GBS = 2 (EoS)')
+            ax_gbs.legend(loc='upper left')
         ax_gbs.set_ylabel('GBS')
-        ax_gbs.legend(loc='upper left')
         ax_gbs.grid(True, alpha=0.3)
 
         loss_ax_gbs = ax_gbs.twinx()
