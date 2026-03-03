@@ -1292,6 +1292,11 @@ if __name__ == '__main__':
     parser.add_argument('--rmsprop-momentum', type=float, default=None,
                         help='Momentum coefficient for RMSProp (requires --rmsprop)')
     parser.add_argument('--nesterov', action='store_true', help='Use Nesterov momentum with SGD (requires --momentum > 0)')
+    parser.add_argument('--muon', action='store_true', help='Use Muon optimizer (Newton-Schulz orthogonalized momentum)')
+    parser.add_argument('--muon-momentum', '--muon_momentum', type=float, default=0.95,
+                        help='Momentum coefficient for Muon optimizer (default: 0.95)')
+    parser.add_argument('--muon-ns-steps', '--muon_ns_steps', type=int, default=5,
+                        help='Number of Newton-Schulz iterations for Muon (default: 5)')
     parser.add_argument('--momentum-warmup', '--momentum_warmup', action='store_true', 
                        help='If set, use momentum=0 for first N steps, then switch to target momentum (requires --momentum)')
     parser.add_argument('--momentum-warmup-steps', '--momentum_warmup_steps', type=int, default=100, 
@@ -1450,6 +1455,21 @@ if __name__ == '__main__':
         if args.momentum is None or args.momentum <= 0:
             raise ValueError("Nesterov requires --momentum > 0 with SGD")
     
+    # Muon validation
+    if args.muon:
+        if args.adam:
+            raise ValueError("--muon conflicts with --adam; choose one optimizer")
+        if args.rmsprop is not None:
+            raise ValueError("--muon conflicts with --rmsprop; choose one optimizer")
+        if args.momentum is not None:
+            raise ValueError("--muon conflicts with --momentum; use --muon-momentum instead")
+        if args.nesterov:
+            raise ValueError("--muon conflicts with --nesterov; Muon has its own Nesterov logic")
+        if args.lambdamaxpreconditioned:
+            raise ValueError("--muon has no diagonal preconditioner; --lambdamaxpreconditioned is not supported")
+        if args.adaptive_batch_sharpness or args.adaptive_batch_sharpness_momentum:
+            raise ValueError("--muon has no diagonal preconditioner; --adaptive-batch-sharpness is not supported")
+
     # Momentum warmup validation
     if args.momentum_warmup and args.momentum is None:
         raise ValueError("--momentum-warmup requires --momentum to be specified")
@@ -1625,7 +1645,9 @@ if __name__ == '__main__':
 
     # ----- Optimizer Preparation -----
     optimizer = prepare_optimizer(net, args.lr, args.momentum, args.adam, args.nesterov,
-                                  rmsprop_alpha=args.rmsprop, rmsprop_momentum=args.rmsprop_momentum)
+                                  rmsprop_alpha=args.rmsprop, rmsprop_momentum=args.rmsprop_momentum,
+                                  muon=args.muon, muon_momentum=args.muon_momentum,
+                                  muon_ns_steps=args.muon_ns_steps)
 
     # ----- Checkpoint Cadence Determination -----
     if args.checkpoint_every is not None:

@@ -2,6 +2,7 @@ import torch as T
 import torch
 import torch.nn as nn
 from einops import rearrange, repeat
+from utils.muon import Muon, zeropower_via_newtonschulz5
 from torch import linalg as LA
 import numpy as np
 from typing import List, Optional
@@ -1441,10 +1442,39 @@ def _build_gbs_step(g_flat_detached, optimizer):
                     s_p = -lr * b_next
                 step_pieces.append(s_p)
 
+    elif isinstance(optimizer, Muon):
+        offset = 0
+        for group in param_groups:
+            lr = group['lr']
+            mom = group['momentum']
+            nesterov = group['nesterov']
+            ns_steps = group['ns_steps']
+            for p in group['params']:
+                numel = p.numel()
+                g_p = g_flat_detached[offset:offset + numel]
+                offset += numel
+                p_state = state.get(p, {})
+                buf = p_state.get('momentum_buffer', None)
+                if buf is None:
+                    buf_t = torch.zeros_like(g_p)
+                else:
+                    buf_t = buf.flatten().detach().clone()
+                buf_next = mom * buf_t + g_p
+                if nesterov:
+                    g_eff = g_p + mom * buf_next
+                else:
+                    g_eff = buf_next
+                if p.ndim >= 2:
+                    g_2d = g_eff.view(p.shape[0], -1)
+                    update = zeropower_via_newtonschulz5(g_2d, steps=ns_steps).flatten()
+                else:
+                    update = g_eff
+                step_pieces.append(-lr * update)
+
     else:
         raise ValueError(
             f"_build_gbs_step: unsupported optimizer type {type(optimizer).__name__}. "
-            "Supported: SGD, Adam, AdamW, RMSprop."
+            "Supported: SGD, Adam, AdamW, RMSprop, Muon."
         )
 
     return torch.cat(step_pieces).detach()
@@ -1487,7 +1517,7 @@ def calculate_gbs(net, X, Y, loss_fn, optimizer,
     try:
         # Quick check: will _build_gbs_step work for this optimizer?
         _supported = (torch.optim.SGD, torch.optim.Adam, torch.optim.AdamW,
-                      torch.optim.RMSprop)
+                      torch.optim.RMSprop, Muon)
         if not isinstance(optimizer, _supported):
             return np.nan
     except Exception:

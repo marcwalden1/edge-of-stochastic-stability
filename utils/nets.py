@@ -3,6 +3,7 @@ import torch
 import torch.nn as nn
 
 from utils.resnet_new import resnet14, ResNet
+from utils.muon import Muon
 from utils.resnet_bn import resnet10 as resnet10_bn, ResNet as ResNetBN
 import torch.nn.functional as F
 
@@ -445,7 +446,12 @@ def initialize_net(net, scale=None, seed=None):
 
 
 def prepare_optimizer(net, lr, momentum, adam, nesterov: bool = False,
-                      rmsprop_alpha: float = None, rmsprop_momentum: float = None):
+                      rmsprop_alpha: float = None, rmsprop_momentum: float = None,
+                      muon: bool = False, muon_momentum: float = 0.95,
+                      muon_ns_steps: int = 5):
+    if muon:
+        return Muon(net.parameters(), lr=lr, momentum=muon_momentum,
+                    ns_steps=muon_ns_steps)
     if rmsprop_alpha is not None:
         kwargs = dict(lr=lr, alpha=rmsprop_alpha)
         if rmsprop_momentum is not None:
