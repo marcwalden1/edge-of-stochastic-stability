@@ -1105,6 +1105,18 @@ def train(
 
                 optimizer.step()
 
+                # Save last gradient for Adam ABSM exact formula
+                if isinstance(optimizer, (torch.optim.Adam, torch.optim.AdamW)):
+                    with torch.no_grad():
+                        for group in optimizer.param_groups:
+                            for p in group['params']:
+                                if p.grad is not None:
+                                    state = optimizer.state[p]
+                                    if 'last_grad' not in state:
+                                        state['last_grad'] = p.grad.detach().clone()
+                                    else:
+                                        state['last_grad'].copy_(p.grad)
+
                 # Cosine similarity tracking (only after step 20000)
                 # After optimizer.step(): momentum_buf contains v_t = β*v_{t-1} + g_t
                 # prev_momentum_buf (captured above) contains v_{t-1}

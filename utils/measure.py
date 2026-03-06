@@ -32,7 +32,8 @@ __all__ = ['param_vector', 'param_length', 'flatt', 'grads_vector',
            'calculate_adaptive_batch_sharpness', 'calculate_adaptive_batch_sharpness_momentum',
            'get_preconditioner_diag', 'create_preconditioned_hessian_vector_product',
            'compute_preconditioned_eigenvalues',
-           'calculate_gbs', 'compute_gbs_per_batch', '_build_gbs_step']
+           'calculate_gbs', 'compute_gbs_per_batch', '_build_gbs_step',
+           'get_adam_last_grad']
 
 
 class EigenvectorCache:
@@ -225,6 +226,24 @@ def get_preconditioned_momentum_buffer(optimizer: T.optim.Optimizer) -> T.Tensor
                 buffers.append(state['exp_avg'].flatten().detach().clone())
         return T.cat(buffers) if buffers else None
     return None
+
+
+def get_adam_last_grad(optimizer: T.optim.Optimizer) -> T.Tensor | None:
+    """Extract flattened last-used gradient stored by the training loop for Adam.
+
+    Returns None if not Adam/AdamW, or if last_grad has not yet been saved
+    (e.g. first step or old checkpoint without last_grad in state).
+    """
+    if not isinstance(optimizer, (T.optim.Adam, T.optim.AdamW)):
+        return None
+    parts = []
+    for group in optimizer.param_groups:
+        for p in group['params']:
+            state = optimizer.state.get(p)
+            if state is None or 'last_grad' not in state:
+                return None
+            parts.append(state['last_grad'].flatten().detach().clone())
+    return T.cat(parts) if parts else None
 
 
 def get_preconditioned_momentum_beta(optimizer: T.optim.Optimizer) -> float:
@@ -930,14 +949,15 @@ def compute_adaptive_grad_H_grad(loss, net, preconditioner_inv):
 
 
 def compute_adaptive_grad_H_grad_momentum(loss, net, preconditioner_inv, momentum_buffer, beta,
-                                          frozen_step=None):
+                                          frozen_step=None, adam_alpha=None):
     """Compute (s^T H s, g^T s) for a single batch.
 
     This is the per-batch kernel for adaptive batch sharpness with momentum.
 
     Step direction s depends on the optimizer:
     - RMSProp: s = beta*m + P^{-1}*g_B  (per-batch, frozen_step=None)
-    - Adam:    s = P^{-1} * m̂           (frozen bias-corrected step, passed via frozen_step)
+    - Adam:    s = frozen_step + adam_alpha * P^{-1}*g_B
+               where frozen_step = P^{-1} * beta1*m_{t-1} / (1 - beta1^t)
 
     When beta=0 and frozen_step=None, this reduces to compute_adaptive_grad_H_grad.
 
@@ -947,7 +967,8 @@ def compute_adaptive_grad_H_grad_momentum(loss, net, preconditioner_inv, momentu
         preconditioner_inv: Flattened P^{-1} vector (detached).
         momentum_buffer: Flattened momentum buffer m (detached).
         beta: Momentum coefficient.
-        frozen_step: If not None, use this as s directly (Adam path: P^{-1} * m̂).
+        frozen_step: If not None, the frozen part of the Adam step (detached).
+        adam_alpha: Scalar weight for the per-batch P^{-1}*g_B term in Adam path.
 
     Returns:
         Tuple[Tensor, Tensor]: (s^T H s, g^T s) as scalar tensors.
@@ -957,7 +978,9 @@ def compute_adaptive_grad_H_grad_momentum(loss, net, preconditioner_inv, momentu
     g_flat = flatt(grads)
 
     if frozen_step is not None:
-        s = frozen_step                               # Adam: P^{-1} * m̂, fully frozen
+        # Adam: s_B = frozen_part + adam_alpha * P^{-1} * g_B
+        u = g_flat.detach() * preconditioner_inv      # P^{-1} g_B (detached)
+        s = frozen_step + adam_alpha * u
     else:
         u = g_flat.detach() * preconditioner_inv      # P^{-1} g_B (detached)
         s = beta * momentum_buffer + u                # RMSProp: s_B = beta*m + P^{-1}*g_B
@@ -1271,8 +1294,10 @@ def calculate_adaptive_batch_sharpness_momentum(net, X, Y, loss_fn, optimizer,
     The step direction s depends on the optimizer:
     - RMSProp: s = beta*m + P^{-1}*g_B  (per-batch; m is momentum_buffer,
                P = diag(sqrt(v) + eps))
-    - Adam:    s = P^{-1} * m̂  (frozen bias-corrected first moment;
-               m̂ = exp_avg / (1 - beta1^t), P = diag(sqrt(v̂) + eps))
+    - Adam:    s_B = frozen_part + adam_alpha * P^{-1} * g_B
+               where frozen_part = P^{-1} * beta1*m_{t-1} / (1 - beta1^t),
+               adam_alpha = (1-beta1) / (1 - beta1^t),
+               P = diag(sqrt(v̂) + eps)
 
     When beta=0 (RMSProp path), this reduces to the non-momentum adaptive
     batch sharpness.
@@ -1291,8 +1316,9 @@ def calculate_adaptive_batch_sharpness_momentum(net, X, Y, loss_fn, optimizer,
 
     beta = get_preconditioned_momentum_beta(optimizer)
 
-    # For Adam: compute frozen s = P^{-1} * m̂ (bias-corrected, same for all batches)
+    # For Adam: compute exact frozen_part and adam_alpha for s_B = frozen_part + adam_alpha * P^{-1} * g_B
     frozen_step = None
+    adam_alpha  = None
     if isinstance(optimizer, (T.optim.Adam, T.optim.AdamW)):
         beta1 = optimizer.param_groups[0]['betas'][0]
         step_t = None
@@ -1308,9 +1334,16 @@ def calculate_adaptive_batch_sharpness_momentum(net, X, Y, loss_fn, optimizer,
                 break
         if step_t is None or step_t == 0:
             return np.nan
+
+        last_grad = get_adam_last_grad(optimizer)
+        if last_grad is None:
+            return np.nan   # last_grad not yet stored (first step of run)
+
         bias_correction1 = 1.0 - beta1 ** step_t
-        m_hat = momentum_buffer / bias_correction1
-        frozen_step = (preconditioner_inv * m_hat).detach()
+        # Recover beta1 * m_{t-1} exactly: exp_avg = beta1*m_{t-1} + (1-beta1)*g_t
+        m_prev_times_beta1 = momentum_buffer - (1.0 - beta1) * last_grad
+        frozen_step = (preconditioner_inv * m_prev_times_beta1 / bias_correction1).detach()
+        adam_alpha  = (1.0 - beta1) / bias_correction1
 
     numerators = []
     denominators = []
@@ -1331,7 +1364,7 @@ def calculate_adaptive_batch_sharpness_momentum(net, X, Y, loss_fn, optimizer,
 
         sHs, gs = compute_adaptive_grad_H_grad_momentum(
             loss, net, preconditioner_inv, momentum_buffer, beta,
-            frozen_step=frozen_step)
+            frozen_step=frozen_step, adam_alpha=adam_alpha)
         numerators.append(sHs.item())
         denominators.append(gs.item())
 
