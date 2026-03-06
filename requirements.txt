@@ -17,6 +17,9 @@ matplotlib>=3.10.0
 pandas>=2.3.0
 notebook>=7.0.0
 
+# Vision Transformer support
+timm>=0.9.0
+
 # Testing
 pytest>=7.0.0
 

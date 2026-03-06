@@ -1,6 +1,7 @@
 import torch as T
 import torch
 import torch.nn as nn
+import timm
 
 from utils.resnet_new import resnet14, ResNet
 from utils.resnet_bn import resnet10 as resnet10_bn, ResNet as ResNetBN
@@ -96,7 +97,18 @@ def get_model_presets():
         'resnet_bn': {
             'type': 'resnet_bn',
             'params': {},
-        }
+        },
+        'vit': {
+            'type': 'vit',
+            'params': {
+                'img_size': 32,
+                'patch_size': 4,
+                'embed_dim': 192,
+                'depth': 6,
+                'num_heads': 3,
+                'mlp_ratio': 4.0,
+            }
+        },
     }
     return model_presets
 
@@ -247,6 +259,26 @@ class CNN(nn.Module):
         return x
 
 
+class ViT(nn.Module):
+    def __init__(self, img_size=32, patch_size=4, embed_dim=192, depth=6,
+                 num_heads=3, mlp_ratio=4.0, num_classes=10):
+        super().__init__()
+        self.model = timm.create_model(
+            'vit_tiny_patch16_224',
+            pretrained=False,
+            img_size=img_size,
+            patch_size=patch_size,
+            embed_dim=embed_dim,
+            depth=depth,
+            num_heads=num_heads,
+            mlp_ratio=mlp_ratio,
+            num_classes=num_classes,
+        )
+
+    def forward(self, x):
+        return self.model(x)
+
+
 class Linear(nn.Module):
     def __init__(self, input_dim, hidden_dim, n_layers, output_dim, bias=True):
         super(Linear, self).__init__()
@@ -291,6 +323,17 @@ def prepare_net(model_type: str,
     if model_type == 'resnet_bn':
         raise "Not implemented - you are still using old resnet_bn"
         net = resnet10_bn()
+
+    if model_type == 'vit':
+        net = ViT(
+            img_size=params.get('img_size', 32),
+            patch_size=params.get('patch_size', 4),
+            embed_dim=params.get('embed_dim', 192),
+            depth=params.get('depth', 6),
+            num_heads=params.get('num_heads', 3),
+            mlp_ratio=params.get('mlp_ratio', 4.0),
+            num_classes=params['output_dim'],
+        )
 
     return net
 
@@ -440,6 +483,8 @@ def initialize_net(net, scale=None, seed=None):
             initialize_resnet_bn(net, scale=scale)
         elif isinstance(net, CNN):
             initialize_cnn(net, scale=scale)
+        elif isinstance(net, ViT):
+            pass  # timm initializes weights internally
         else:
             raise ValueError("Unknown net type")
 
