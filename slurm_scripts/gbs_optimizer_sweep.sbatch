@@ -40,31 +40,31 @@ OPTIMIZER_ARGS=(
     "--lr 0.0005  --momentum 0.8 --batch 256"
     "--lr 0.0005  --momentum 0.8 --batch 1048"
     # --- RMSProp (indices 20-27) ---
-    "--lr 0.00003 --rmsprop 0.99 --batch 64"
-    "--lr 0.00003 --rmsprop 0.99 --batch 1048"
-    "--lr 0.00003 --rmsprop 0.9  --batch 64"
-    "--lr 0.00003 --rmsprop 0.9  --batch 1048"
-    "--lr 0.00005 --rmsprop 0.99 --batch 64"
-    "--lr 0.00005 --rmsprop 0.99 --batch 1048"
-    "--lr 0.00005 --rmsprop 0.9  --batch 64"
-    "--lr 0.00005 --rmsprop 0.9  --batch 1048"
+    "--lr 0.00003 --rmsprop 0.99 --batch 64   --adaptive-batch-sharpness --lambdamaxpreconditioned"
+    "--lr 0.00003 --rmsprop 0.99 --batch 1048 --adaptive-batch-sharpness --lambdamaxpreconditioned"
+    "--lr 0.00003 --rmsprop 0.9  --batch 64   --adaptive-batch-sharpness --lambdamaxpreconditioned"
+    "--lr 0.00003 --rmsprop 0.9  --batch 1048 --adaptive-batch-sharpness --lambdamaxpreconditioned"
+    "--lr 0.00005 --rmsprop 0.99 --batch 64   --adaptive-batch-sharpness --lambdamaxpreconditioned"
+    "--lr 0.00005 --rmsprop 0.99 --batch 1048 --adaptive-batch-sharpness --lambdamaxpreconditioned"
+    "--lr 0.00005 --rmsprop 0.9  --batch 64   --adaptive-batch-sharpness --lambdamaxpreconditioned"
+    "--lr 0.00005 --rmsprop 0.9  --batch 1048 --adaptive-batch-sharpness --lambdamaxpreconditioned"
     # --- Adam (indices 28-43) ---
-    "--lr 0.00003 --adam 0.9 0.999 --batch 64"
-    "--lr 0.00003 --adam 0.9 0.999 --batch 1048"
-    "--lr 0.00003 --adam 0.9 0.9   --batch 64"
-    "--lr 0.00003 --adam 0.9 0.9   --batch 1048"
-    "--lr 0.00003 --adam 0.8 0.999 --batch 64"
-    "--lr 0.00003 --adam 0.8 0.999 --batch 1048"
-    "--lr 0.00003 --adam 0.8 0.9   --batch 64"
-    "--lr 0.00003 --adam 0.8 0.9   --batch 1048"
-    "--lr 0.00005 --adam 0.9 0.999 --batch 64"
-    "--lr 0.00005 --adam 0.9 0.999 --batch 1048"
-    "--lr 0.00005 --adam 0.9 0.9   --batch 64"
-    "--lr 0.00005 --adam 0.9 0.9   --batch 1048"
-    "--lr 0.00005 --adam 0.8 0.999 --batch 64"
-    "--lr 0.00005 --adam 0.8 0.999 --batch 1048"
-    "--lr 0.00005 --adam 0.8 0.9   --batch 64"
-    "--lr 0.00005 --adam 0.8 0.9   --batch 1048"
+    "--lr 0.00003 --adam 0.9 0.999 --batch 64   --adaptive-batch-sharpness-momentum --lambdamaxpreconditioned"
+    "--lr 0.00003 --adam 0.9 0.999 --batch 1048 --adaptive-batch-sharpness-momentum --lambdamaxpreconditioned"
+    "--lr 0.00003 --adam 0.9 0.9   --batch 64   --adaptive-batch-sharpness-momentum --lambdamaxpreconditioned"
+    "--lr 0.00003 --adam 0.9 0.9   --batch 1048 --adaptive-batch-sharpness-momentum --lambdamaxpreconditioned"
+    "--lr 0.00003 --adam 0.8 0.999 --batch 64   --adaptive-batch-sharpness-momentum --lambdamaxpreconditioned"
+    "--lr 0.00003 --adam 0.8 0.999 --batch 1048 --adaptive-batch-sharpness-momentum --lambdamaxpreconditioned"
+    "--lr 0.00003 --adam 0.8 0.9   --batch 64   --adaptive-batch-sharpness-momentum --lambdamaxpreconditioned"
+    "--lr 0.00003 --adam 0.8 0.9   --batch 1048 --adaptive-batch-sharpness-momentum --lambdamaxpreconditioned"
+    "--lr 0.00005 --adam 0.9 0.999 --batch 64   --adaptive-batch-sharpness-momentum --lambdamaxpreconditioned"
+    "--lr 0.00005 --adam 0.9 0.999 --batch 1048 --adaptive-batch-sharpness-momentum --lambdamaxpreconditioned"
+    "--lr 0.00005 --adam 0.9 0.9   --batch 64   --adaptive-batch-sharpness-momentum --lambdamaxpreconditioned"
+    "--lr 0.00005 --adam 0.9 0.9   --batch 1048 --adaptive-batch-sharpness-momentum --lambdamaxpreconditioned"
+    "--lr 0.00005 --adam 0.8 0.999 --batch 64   --adaptive-batch-sharpness-momentum --lambdamaxpreconditioned"
+    "--lr 0.00005 --adam 0.8 0.999 --batch 1048 --adaptive-batch-sharpness-momentum --lambdamaxpreconditioned"
+    "--lr 0.00005 --adam 0.8 0.9   --batch 64   --adaptive-batch-sharpness-momentum --lambdamaxpreconditioned"
+    "--lr 0.00005 --adam 0.8 0.9   --batch 1048 --adaptive-batch-sharpness-momentum --lambdamaxpreconditioned"
 )
 
 export WANDB_MODE=offline
@@ -75,6 +75,5 @@ python training.py \
   --init-scale 0.2 --dataset-seed 111 --init-seed 8312 \
   --stop-loss 0.00001 \
   --batch-sharpness --lambdamax \
-  --lambdamaxpreconditioned --adaptive-batch-sharpness \
   --GBS \
   ${OPTIMIZER_ARGS[$SLURM_ARRAY_TASK_ID]}

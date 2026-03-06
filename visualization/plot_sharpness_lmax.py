@@ -54,6 +54,7 @@ class RunInfo:
     folder: Path
     batch_size: int
     lr: float
+    optimizer: str = "SGD"
 
 
 def require_env_path(name: str) -> Path:
@@ -70,6 +71,35 @@ def iter_run_folders(results_root: Path) -> Iterable[Path]:
         yield from (child for child in dataset_folder.iterdir() if child.is_dir())
 
 
+def parse_optimizer_from_header(folder: Path) -> str:
+    """Detect optimizer type from the Namespace line in results.txt header."""
+    results_file = folder / 'results.txt'
+    try:
+        with open(results_file) as f:
+            for line in f:
+                if not line.startswith('#'):
+                    break
+                if '# Arguments: Namespace(' not in line:
+                    continue
+                ns = line
+                # Adam: adam= with a non-None tuple value
+                import re
+                if re.search(r'adam=\(', ns):
+                    return "Adam"
+                # RMSProp: rmsprop= with a float (not None)
+                m = re.search(r'rmsprop=([^,)]+)', ns)
+                if m and m.group(1).strip() != 'None':
+                    return "RMSProp"
+                # SGDM: momentum= with a non-None float
+                m = re.search(r'momentum=([^,)]+)', ns)
+                if m and m.group(1).strip() != 'None':
+                    return "SGDM"
+                return "SGD"
+    except Exception:
+        pass
+    return "SGD"
+
+
 def parse_run_info(folder: Path) -> RunInfo:
     """Parse batch size and learning rate from folder name."""
     parts = folder.name.split('_')
@@ -80,7 +110,8 @@ def parse_run_info(folder: Path) -> RunInfo:
         batch_size = int(batch_token[1:])
     except (StopIteration, ValueError) as exc:
         raise ResultsConfigError(f"Unrecognised folder naming scheme: {folder.name}") from exc
-    return RunInfo(folder=folder, batch_size=batch_size, lr=lr)
+    optimizer = parse_optimizer_from_header(folder)
+    return RunInfo(folder=folder, batch_size=batch_size, lr=lr, optimizer=optimizer)
 
 
 def latest_run(results_root: Path) -> RunInfo:
@@ -151,7 +182,10 @@ def plot_metrics(df: pd.DataFrame, run: RunInfo,
 
     ax_top.set_ylabel('sharpness')
     two_over_eta = 2 / run.lr
-    ax_top.set_title(f'Batch Sharpness & λ_max (batch size {run.batch_size}, lr={run.lr}, 2/η={two_over_eta:.1f})')
+    ax_top.set_title(
+        f'{run.optimizer} — Batch Sharpness & λ_max '
+        f'(batch={run.batch_size}, lr={run.lr}, 2/η={two_over_eta:.1f})'
+    )
     ax_top.legend(loc='upper left')
     ax_top.grid(True, alpha=0.3)
     if ylimtop is not None:
