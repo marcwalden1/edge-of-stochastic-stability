@@ -141,7 +141,12 @@ def load_results(run: RunInfo) -> pd.DataFrame:
 
 def plot_metrics(df: pd.DataFrame, run: RunInfo,
                  ylimtop: float = None, ylimbottom: float = None,
-                 show_gbs: bool = False) -> plt.Figure:
+                 show_gbs: bool = False,
+                 exclude_bs: bool = False,
+                 exclude_lmax: bool = False,
+                 exclude_lmaxpreconditioned: bool = False,
+                 exclude_abs: bool = False,
+                 exclude_absm: bool = False) -> plt.Figure:
     """Plot batch sharpness and lambda_max vs training steps.
 
     Top subplot:    batch sharpness, lambda_max, loss (always shown).
@@ -150,10 +155,17 @@ def plot_metrics(df: pd.DataFrame, run: RunInfo,
     Bottom subplot: GBS with y=2 reference line (only if show_gbs=True
                     and the gbs column has non-NaN data).
     """
+    preconditioned_cols = []
+    if not exclude_abs:
+        preconditioned_cols.append('adaptive_batch_sharpness')
+    if not exclude_absm:
+        preconditioned_cols.append('adaptive_batch_sharpness_momentum')
+    if not exclude_lmaxpreconditioned:
+        preconditioned_cols.append('lmax_preconditioned')
+
     has_preconditioned = any(
         col in df.columns and df[col].notna().any()
-        for col in ('adaptive_batch_sharpness', 'adaptive_batch_sharpness_momentum',
-                    'lmax_preconditioned')
+        for col in preconditioned_cols
     )
     has_gbs = show_gbs  # always show subplot when requested; data may be empty
 
@@ -170,15 +182,17 @@ def plot_metrics(df: pd.DataFrame, run: RunInfo,
     loss = df[['step', 'full_loss']].dropna()
 
     # --- Top subplot: batch sharpness, lambda_max, loss ---
-    batch_sharp = df[['step', 'batch_sharpness']].dropna()
-    if not batch_sharp.empty:
-        ax_top.plot(batch_sharp['step'], batch_sharp['batch_sharpness'],
-                    label='batch sharpness', color='#2ca02c')
+    if not exclude_bs:
+        batch_sharp = df[['step', 'batch_sharpness']].dropna()
+        if not batch_sharp.empty:
+            ax_top.plot(batch_sharp['step'], batch_sharp['batch_sharpness'],
+                        label='batch sharpness', color='#2ca02c')
 
-    lmax = df[['step', 'lambda_max']].dropna()
-    if not lmax.empty:
-        ax_top.plot(lmax['step'], lmax['lambda_max'],
-                    label=r'$\lambda_{max}$', color='#1f77b4')
+    if not exclude_lmax:
+        lmax = df[['step', 'lambda_max']].dropna()
+        if not lmax.empty:
+            ax_top.plot(lmax['step'], lmax['lambda_max'],
+                        label=r'$\lambda_{max}$', color='#1f77b4')
 
     ax_top.set_ylabel('sharpness')
     two_over_eta = 2 / run.lr
@@ -200,19 +214,19 @@ def plot_metrics(df: pd.DataFrame, run: RunInfo,
 
     # --- Middle subplot: preconditioned metrics + loss ---
     if ax_bot is not None:
-        if 'adaptive_batch_sharpness' in df.columns:
+        if not exclude_abs and 'adaptive_batch_sharpness' in df.columns:
             abs_data = df[['step', 'adaptive_batch_sharpness']].dropna()
             if not abs_data.empty:
                 ax_bot.plot(abs_data['step'], abs_data['adaptive_batch_sharpness'],
                             label='adaptive batch sharpness', color='#ff7f0e')
 
-        if 'adaptive_batch_sharpness_momentum' in df.columns:
+        if not exclude_absm and 'adaptive_batch_sharpness_momentum' in df.columns:
             absm_data = df[['step', 'adaptive_batch_sharpness_momentum']].dropna()
             if not absm_data.empty:
                 ax_bot.plot(absm_data['step'], absm_data['adaptive_batch_sharpness_momentum'],
                             label='adaptive batch sharpness momentum', color='#d62728')
 
-        if 'lmax_preconditioned' in df.columns:
+        if not exclude_lmaxpreconditioned and 'lmax_preconditioned' in df.columns:
             lmax_pc = df[['step', 'lmax_preconditioned']].dropna()
             if not lmax_pc.empty:
                 ax_bot.plot(lmax_pc['step'], lmax_pc['lmax_preconditioned'],
@@ -284,11 +298,31 @@ def main() -> None:
                         help="Upper y-axis limit for top subplot (e.g., 500)")
     parser.add_argument("--ylimbottom", type=float, default=None,
                         help="Upper y-axis limit for bottom subplot (e.g., 100)")
-    parser.add_argument("--GBS", "--gbs", action="store_true", dest="gbs",
-                        help="Add a dedicated GBS subplot below the other plots")
+    parser.add_argument("--exclude-GBS", action="store_true", dest="exclude_gbs",
+                        help="Do not plot the GBS subplot")
+    parser.add_argument("--exclude-BS", action="store_true", dest="exclude_bs",
+                        help="Do not plot batch sharpness")
+    parser.add_argument("--exclude-lmax", action="store_true", dest="exclude_lmax",
+                        help="Do not plot lambda_max")
+    parser.add_argument("--exclude-lmaxpreconditioned", action="store_true",
+                        dest="exclude_lmaxpreconditioned",
+                        help="Do not plot lmax_preconditioned")
+    parser.add_argument("--exclude-ABS", action="store_true", dest="exclude_abs",
+                        help="Do not plot adaptive batch sharpness")
+    parser.add_argument("--exclude-ABSM", action="store_true", dest="exclude_absm",
+                        help="Do not plot adaptive batch sharpness momentum")
     args = parser.parse_args()
 
-    plot_kw = dict(ylimtop=args.ylimtop, ylimbottom=args.ylimbottom, show_gbs=args.gbs)
+    plot_kw = dict(
+        ylimtop=args.ylimtop,
+        ylimbottom=args.ylimbottom,
+        show_gbs=not args.exclude_gbs,
+        exclude_bs=args.exclude_bs,
+        exclude_lmax=args.exclude_lmax,
+        exclude_lmaxpreconditioned=args.exclude_lmaxpreconditioned,
+        exclude_abs=args.exclude_abs,
+        exclude_absm=args.exclude_absm,
+    )
 
     if args.run:
         # Plot a specific run
