@@ -929,11 +929,17 @@ def compute_adaptive_grad_H_grad(loss, net, preconditioner_inv):
     return T.dot(u, Hu_flat), T.dot(g_flat.detach(), u)
 
 
-def compute_adaptive_grad_H_grad_momentum(loss, net, preconditioner_inv, momentum_buffer, beta):
-    """Compute (s^T H s, g^T s) where s = beta*m + P^{-1}*g for a single batch.
+def compute_adaptive_grad_H_grad_momentum(loss, net, preconditioner_inv, momentum_buffer, beta,
+                                          frozen_step=None):
+    """Compute (s^T H s, g^T s) for a single batch.
 
     This is the per-batch kernel for adaptive batch sharpness with momentum.
-    When beta=0, this reduces to compute_adaptive_grad_H_grad.
+
+    Step direction s depends on the optimizer:
+    - RMSProp: s = beta*m + P^{-1}*g_B  (per-batch, frozen_step=None)
+    - Adam:    s = P^{-1} * m̂           (frozen bias-corrected step, passed via frozen_step)
+
+    When beta=0 and frozen_step=None, this reduces to compute_adaptive_grad_H_grad.
 
     Args:
         loss: Scalar loss (must retain computational graph).
@@ -941,6 +947,7 @@ def compute_adaptive_grad_H_grad_momentum(loss, net, preconditioner_inv, momentu
         preconditioner_inv: Flattened P^{-1} vector (detached).
         momentum_buffer: Flattened momentum buffer m (detached).
         beta: Momentum coefficient.
+        frozen_step: If not None, use this as s directly (Adam path: P^{-1} * m̂).
 
     Returns:
         Tuple[Tensor, Tensor]: (s^T H s, g^T s) as scalar tensors.
@@ -949,8 +956,11 @@ def compute_adaptive_grad_H_grad_momentum(loss, net, preconditioner_inv, momentu
     grads = torch.autograd.grad(loss, params, create_graph=True)
     g_flat = flatt(grads)
 
-    u = g_flat.detach() * preconditioner_inv          # P^{-1} g_B (detached)
-    s = beta * momentum_buffer + u                     # s_B = beta*m + P^{-1}*g_B (all detached)
+    if frozen_step is not None:
+        s = frozen_step                               # Adam: P^{-1} * m̂, fully frozen
+    else:
+        u = g_flat.detach() * preconditioner_inv      # P^{-1} g_B (detached)
+        s = beta * momentum_buffer + u                # RMSProp: s_B = beta*m + P^{-1}*g_B
 
     scalar = T.dot(g_flat, s)                          # g^T s (has graph through g_flat)
     Hs = torch.autograd.grad(scalar, params, retain_graph=False)
@@ -1258,15 +1268,18 @@ def calculate_adaptive_batch_sharpness_momentum(net, X, Y, loss_fn, optimizer,
                                                 min_estimates=20, eps=0.005):
     """Compute adaptive batch sharpness with momentum: E[s^T H_B s / g^T s].
 
-    Here s = beta*m + P^{-1}*g where m is the momentum buffer (RMSProp momentum_buffer
-    or Adam exp_avg) and P^{-1} is the preconditioner inverse. When beta=0 this
-    reduces to the non-momentum adaptive batch sharpness.
+    The step direction s depends on the optimizer:
+    - RMSProp: s = beta*m + P^{-1}*g_B  (per-batch; m is momentum_buffer,
+               P = diag(sqrt(v) + eps))
+    - Adam:    s = P^{-1} * m̂  (frozen bias-corrected first moment;
+               m̂ = exp_avg / (1 - beta1^t), P = diag(sqrt(v̂) + eps))
 
-    Supports RMSProp (with momentum) and Adam.
+    When beta=0 (RMSProp path), this reduces to the non-momentum adaptive
+    batch sharpness.
 
     Returns:
         float: Estimated value, or np.nan if preconditioner/momentum buffer
-               is not available.
+               is not available or step count is 0.
     """
     preconditioner_inv = get_preconditioner_inv(optimizer)
     if preconditioner_inv is None:
@@ -1277,6 +1290,27 @@ def calculate_adaptive_batch_sharpness_momentum(net, X, Y, loss_fn, optimizer,
         return np.nan
 
     beta = get_preconditioned_momentum_beta(optimizer)
+
+    # For Adam: compute frozen s = P^{-1} * m̂ (bias-corrected, same for all batches)
+    frozen_step = None
+    if isinstance(optimizer, (T.optim.Adam, T.optim.AdamW)):
+        beta1 = optimizer.param_groups[0]['betas'][0]
+        step_t = None
+        for group in optimizer.param_groups:
+            for p in group['params']:
+                state = optimizer.state.get(p)
+                if state is not None and 'step' in state:
+                    step_t = state['step']
+                    if isinstance(step_t, T.Tensor):
+                        step_t = int(step_t.item())
+                    break
+            if step_t is not None:
+                break
+        if step_t is None or step_t == 0:
+            return np.nan
+        bias_correction1 = 1.0 - beta1 ** step_t
+        m_hat = momentum_buffer / bias_correction1
+        frozen_step = (preconditioner_inv * m_hat).detach()
 
     numerators = []
     denominators = []
@@ -1296,7 +1330,8 @@ def calculate_adaptive_batch_sharpness_momentum(net, X, Y, loss_fn, optimizer,
         loss = loss_fn(net(X_batch).squeeze(dim=-1), Y_batch)
 
         sHs, gs = compute_adaptive_grad_H_grad_momentum(
-            loss, net, preconditioner_inv, momentum_buffer, beta)
+            loss, net, preconditioner_inv, momentum_buffer, beta,
+            frozen_step=frozen_step)
         numerators.append(sHs.item())
         denominators.append(gs.item())
 
