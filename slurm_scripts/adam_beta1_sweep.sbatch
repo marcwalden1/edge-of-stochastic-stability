@@ -7,18 +7,18 @@
 #SBATCH --mem=48G
 #SBATCH --cpus-per-task=4
 #SBATCH --time=06:00:00
-#SBATCH --array=0-11
+#SBATCH --array=0-13
 
-# 12 runs: Adam, lr=0.00002, beta2=0.99, beta1=(0, 0.25, 0.5, 0.75, 0.9, 0.99)
-#   indices  0-5:  batch=8
-#   indices  6-11: batch=8192 (full batch)
+# 14 runs: Adam, lr=0.00002, beta2=0.99, beta1=(0, 0.25, 0.5, 0.75, 0.9, 0.95, 0.99)
+#   indices  0-6:  batch=8
+#   indices  7-13: batch=8192 (full batch)
 
-BETA1_VALUES=(0 0.25 0.5 0.75 0.9 0.99)
+BETA1_VALUES=(0 0.25 0.5 0.75 0.9 0.95 0.99)
 
 ID=${SLURM_ARRAY_TASK_ID}
-BETA1=${BETA1_VALUES[$((ID % 6))]}
+BETA1=${BETA1_VALUES[$((ID % 7))]}
 
-if [ "$ID" -lt 6 ]; then
+if [ "$ID" -lt 7 ]; then
     BATCH=8
 else
     BATCH=8192

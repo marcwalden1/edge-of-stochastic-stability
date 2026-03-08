@@ -9,6 +9,9 @@ from utils.measure import (
     compute_adaptive_grad_H_grad,
     compute_adaptive_grad_H_grad_momentum,
     calculate_adaptive_batch_sharpness_momentum,
+    get_preconditioner_inv,
+    get_preconditioned_momentum_buffer,
+    get_adam_last_grad,
     flatt,
 )
 
@@ -179,3 +182,169 @@ def test_calculate_adaptive_batch_sharpness_momentum_returns_float():
 
     assert isinstance(result, float)
     assert np.isfinite(result)
+
+
+# ---- Adam-specific tests ----
+
+def _make_adam(net, lr=0.001, betas=(0.9, 0.999)):
+    return torch.optim.Adam(net.parameters(), lr=lr, betas=betas)
+
+
+def _do_steps_adam(net, optimizer, X, Y, loss_fn, n=5):
+    """Run n steps and save last_grad after each optimizer.step() (mirrors training.py)."""
+    for _ in range(n):
+        optimizer.zero_grad()
+        loss = loss_fn(net(X).squeeze(dim=-1), Y)
+        loss.backward()
+        optimizer.step()
+        # Mirror training.py: save last gradient for ABSM exact formula
+        with torch.no_grad():
+            for group in optimizer.param_groups:
+                for p in group['params']:
+                    if p.grad is not None:
+                        state = optimizer.state[p]
+                        if 'last_grad' not in state:
+                            state['last_grad'] = p.grad.detach().clone()
+                        else:
+                            state['last_grad'].copy_(p.grad)
+
+
+def test_get_adam_last_grad_returns_none_before_step():
+    """last_grad is not yet stored before training loop saves it."""
+    net = _SmallNet()
+    opt = _make_adam(net)
+    X = torch.randn(16, 4)
+    Y = torch.randn(16)
+    loss_fn = nn.MSELoss()
+    # Run steps WITHOUT saving last_grad (simulates first step of old checkpoint)
+    _do_steps(net, opt, X, Y, loss_fn, n=3)
+    assert get_adam_last_grad(opt) is None
+
+
+def test_get_adam_last_grad_returns_tensor_after_save():
+    """last_grad is available after training loop saves it."""
+    net = _SmallNet()
+    opt = _make_adam(net)
+    X = torch.randn(16, 4)
+    Y = torch.randn(16)
+    loss_fn = nn.MSELoss()
+    _do_steps_adam(net, opt, X, Y, loss_fn, n=3)
+    last_grad = get_adam_last_grad(opt)
+    assert last_grad is not None
+    n_params = sum(p.numel() for p in net.parameters())
+    assert last_grad.shape == (n_params,)
+
+
+def test_get_adam_last_grad_returns_none_for_rmsprop():
+    """Helper returns None for non-Adam optimizers."""
+    net = _SmallNet()
+    opt = _make_rmsprop(net)
+    assert get_adam_last_grad(opt) is None
+
+
+def test_adam_absm_returns_nan_without_last_grad():
+    """ABSM returns np.nan when last_grad hasn't been stored yet."""
+    torch.manual_seed(0)
+    net = _SmallNet()
+    opt = _make_adam(net)
+    X = torch.randn(64, 4)
+    Y = torch.randn(64)
+    loss_fn = nn.MSELoss()
+    # Steps WITHOUT saving last_grad
+    _do_steps(net, opt, X, Y, loss_fn, n=5)
+    result = calculate_adaptive_batch_sharpness_momentum(
+        net, X, Y, loss_fn, opt, batch_size=8, n_estimates=10, min_estimates=5,
+    )
+    assert np.isnan(result), f"Expected nan without last_grad, got {result}"
+
+
+def test_adam_absm_returns_finite_with_last_grad():
+    """ABSM returns a finite float after last_grad has been stored."""
+    torch.manual_seed(1)
+    net = _SmallNet()
+    opt = _make_adam(net)
+    X = torch.randn(64, 4)
+    Y = torch.randn(64)
+    loss_fn = nn.MSELoss()
+    _do_steps_adam(net, opt, X, Y, loss_fn, n=10)
+    result = calculate_adaptive_batch_sharpness_momentum(
+        net, X, Y, loss_fn, opt,
+        batch_size=8, n_estimates=50, min_estimates=10, eps=0.1,
+    )
+    assert isinstance(result, float)
+    assert np.isfinite(result)
+
+
+def test_adam_absm_denominator_always_positive():
+    """g_B^T s_B > 0 for every batch (denominator has guaranteed positive floor)."""
+    torch.manual_seed(2)
+    net = _SmallNet()
+    opt = _make_adam(net)
+    X = torch.randn(64, 4)
+    Y = torch.randn(64)
+    loss_fn = nn.MSELoss()
+    _do_steps_adam(net, opt, X, Y, loss_fn, n=10)
+
+    pinv = get_preconditioner_inv(opt)
+    momentum_buffer = get_preconditioned_momentum_buffer(opt)
+    beta1 = opt.param_groups[0]['betas'][0]
+
+    # Compute frozen_step and adam_alpha (mirrors calculate_adaptive_batch_sharpness_momentum)
+    step_t = int(list(opt.state.values())[0]['step'].item())
+    last_grad = get_adam_last_grad(opt)
+    bias_correction1 = 1.0 - beta1 ** step_t
+    m_prev_times_beta1 = momentum_buffer - (1.0 - beta1) * last_grad
+    frozen_step = (pinv * m_prev_times_beta1 / bias_correction1).detach()
+    adam_alpha = (1.0 - beta1) / bias_correction1
+
+    rng = torch.Generator()
+    rng.manual_seed(99)
+    for _ in range(30):
+        idx = torch.randperm(len(X), generator=rng)[:8]
+        loss = loss_fn(net(X[idx]).squeeze(dim=-1), Y[idx])
+        _, gs = compute_adaptive_grad_H_grad_momentum(
+            loss, net, pinv, momentum_buffer, beta=0.0,
+            frozen_step=frozen_step, adam_alpha=adam_alpha,
+        )
+        assert gs.item() > 0, f"Denominator g_B^T s_B = {gs.item()} <= 0"
+
+
+def test_adam_absm_stable_across_measurements():
+    """ABSM values should be consistent (not swinging wildly) across repeated calls."""
+    torch.manual_seed(3)
+    net = _SmallNet()
+    opt = _make_adam(net)
+    X = torch.randn(64, 4)
+    Y = torch.randn(64)
+    loss_fn = nn.MSELoss()
+    _do_steps_adam(net, opt, X, Y, loss_fn, n=20)
+
+    estimates = []
+    for _ in range(5):
+        val = calculate_adaptive_batch_sharpness_momentum(
+            net, X, Y, loss_fn, opt,
+            batch_size=8, n_estimates=40, min_estimates=10, eps=0.1,
+        )
+        assert np.isfinite(val)
+        estimates.append(val)
+
+    # All estimates should be within 3x of each other (no sign flips / giant swings)
+    ratio = max(estimates) / min(estimates)
+    assert ratio < 3.0, f"ABSM swings too wildly: {estimates}"
+
+
+def test_adam_absm_positive():
+    """ABSM should be positive (sHs / gs ratio with positive denominator floor)."""
+    torch.manual_seed(4)
+    net = _SmallNet()
+    opt = _make_adam(net)
+    X = torch.randn(128, 4)
+    Y = torch.randn(128)
+    loss_fn = nn.MSELoss()
+    _do_steps_adam(net, opt, X, Y, loss_fn, n=20)
+
+    result = calculate_adaptive_batch_sharpness_momentum(
+        net, X, Y, loss_fn, opt,
+        batch_size=8, n_estimates=100, min_estimates=20, eps=0.05,
+    )
+    assert result > 0, f"ABSM should be positive, got {result}"
