@@ -263,6 +263,9 @@ class ViT(nn.Module):
     def __init__(self, img_size=32, patch_size=4, embed_dim=192, depth=6,
                  num_heads=3, mlp_ratio=4.0, num_classes=10):
         super().__init__()
+        # Disable efficient/flash attention so second-order gradients work
+        T.backends.cuda.enable_flash_sdp(False)
+        T.backends.cuda.enable_mem_efficient_sdp(False)
         self.model = timm.create_model(
             'vit_tiny_patch16_224',
             pretrained=False,
@@ -273,7 +276,6 @@ class ViT(nn.Module):
             num_heads=num_heads,
             mlp_ratio=mlp_ratio,
             num_classes=num_classes,
-            attn_cfg=dict(fused_attn=False),
         )
 
     def forward(self, x):
