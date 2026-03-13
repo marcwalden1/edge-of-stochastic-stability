@@ -273,6 +273,7 @@ class ViT(nn.Module):
             num_heads=num_heads,
             mlp_ratio=mlp_ratio,
             num_classes=num_classes,
+            attn_cfg=dict(fused_attn=False),
         )
 
     def forward(self, x):
