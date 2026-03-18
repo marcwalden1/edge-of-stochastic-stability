@@ -41,10 +41,14 @@ def get_dataset_presets():
             'imagenet32': {
                 'input_dim': 3*32*32,
                 'output_dim': 1000
-            }
+            },
+            'shakespeare': {
+                'input_dim': 128,
+                'output_dim': 65,
+            },
 
         }
-    
+
     return dataset_presets
 
 
@@ -434,6 +438,50 @@ def prepare_imagenet32(dataset_folder: Path, num_data: int, dataset_seed: int = 
 
 
 
+def prepare_shakespeare(dataset_folder: Path, num_data: int, seq_len: int = 128, dataset_seed: int = 888):
+    import urllib.request
+    shakes_dir = dataset_folder / 'shakespeare'
+    shakes_dir.mkdir(parents=True, exist_ok=True)
+    txt_path = shakes_dir / 'input.txt'
+    if not txt_path.exists():
+        url = 'https://raw.githubusercontent.com/karpathy/char-rnn/master/data/tinyshakespeare/input.txt'
+        urllib.request.urlretrieve(url, txt_path)
+
+    text = txt_path.read_text()
+
+    # Build char vocab (sorted for determinism)
+    chars = sorted(set(text))
+    assert len(chars) == 65, f"Expected 65 unique chars, got {len(chars)}"
+    stoi = {c: i for i, c in enumerate(chars)}
+
+    data = torch.tensor([stoi[c] for c in text], dtype=torch.long)
+
+    # 90/10 train/test split
+    n = len(data)
+    n_train = int(0.9 * n)
+    train_data = data[:n_train]
+    test_data = data[n_train:]
+
+    def make_windows(d):
+        # Non-overlapping windows of length seq_len
+        n_seq = len(d) // (seq_len + 1)
+        X = torch.stack([d[i * seq_len: i * seq_len + seq_len] for i in range(n_seq)])
+        Y = torch.stack([d[i * seq_len + 1: i * seq_len + seq_len + 1] for i in range(n_seq)])
+        return X, Y
+
+    X_train, Y_train = make_windows(train_data)
+    X_test, Y_test = make_windows(test_data)
+
+    # Subsample training set
+    if num_data > 0 and num_data < len(X_train):
+        rng = np.random.default_rng(dataset_seed)
+        idx = rng.choice(len(X_train), num_data, replace=False)
+        X_train = X_train[idx]
+        Y_train = Y_train[idx]
+
+    return X_train, Y_train, X_test, Y_test
+
+
 def prepare_dataset(dataset: str, dataset_folder: Union[str, Path], num_data: int, classes: list, dataset_seed: int = 888,
                     loss_type: str = 'mse'
                     ):
@@ -453,4 +501,6 @@ def prepare_dataset(dataset: str, dataset_folder: Union[str, Path], num_data: in
         return prepare_fmnist(dataset_folder, num_data, dataset_seed=dataset_seed, loss_type=loss_type)
     if dataset == 'imagenet32':
         return prepare_imagenet32(dataset_folder, num_data, dataset_seed=dataset_seed, loss_type=loss_type)
-    
+    if dataset == 'shakespeare':
+        return prepare_shakespeare(dataset_folder, num_data, seq_len=128, dataset_seed=dataset_seed)
+
