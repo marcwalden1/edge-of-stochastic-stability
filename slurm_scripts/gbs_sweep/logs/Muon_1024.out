@@ -1,0 +1,1217 @@
+Starting GBS sweep run: OPT=Muon  BATCH=1024
+Results dir: /n/holylabs/LABS/kdbrantley_lab/Lab/mwalden/results
+Node: holygpu8a19106.rc.fas.harvard.edu
+GPU: NVIDIA A100-SXM4-40GB
+Tue Mar 17 14:29:56 EDT 2026
+wandb logging disabled by flag (--disable-wandb).
+Training started at 2026-03-17 14:30:21
+Will save checkpoints every 5000 steps
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 1, Step 0: Total lambda max = 2.9811275005340576, Loss = 0.9994962215423584 !!!
+Checkpoint saved at step 0: /n/holylabs/LABS/kdbrantley_lab/Lab/mwalden/results/wandb_checkpoints/kihfro7r/checkpoint_step_0.pt
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 33, Step 0: Total lambda max = 19.71649169921875, Loss = 0.689018964767456 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 65, Step 0: Total lambda max = 127.0719985961914, Loss = 0.37571683526039124 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 97, Step 0: Total lambda max = 350.6783142089844, Loss = 0.11297392845153809 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 129, Step 0: Total lambda max = 576.384521484375, Loss = 0.011935988441109657 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 161, Step 0: Total lambda max = 671.2478637695312, Loss = 0.0014999962877482176 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 193, Step 0: Total lambda max = 612.2239379882812, Loss = 0.0011687350925058126 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 225, Step 0: Total lambda max = 552.0863647460938, Loss = 0.0009167629759758711 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 257, Step 0: Total lambda max = 523.9204711914062, Loss = 0.000890747644007206 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 289, Step 0: Total lambda max = 490.4693298339844, Loss = 0.0007017523748800159 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 321, Step 0: Total lambda max = 418.87060546875, Loss = 0.0006644862005487084 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 353, Step 0: Total lambda max = 449.01031494140625, Loss = 0.0006200878415256739 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 385, Step 0: Total lambda max = 408.6070556640625, Loss = 0.0005334194283932447 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 417, Step 0: Total lambda max = 359.36065673828125, Loss = 0.0007289875647984445 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 449, Step 0: Total lambda max = 348.9490966796875, Loss = 0.000533641257788986 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 481, Step 0: Total lambda max = 318.59417724609375, Loss = 0.00046200683573260903 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 513, Step 0: Total lambda max = 288.76666259765625, Loss = 0.0005306692328304052 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 545, Step 0: Total lambda max = 273.6033630371094, Loss = 0.0005158344283699989 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 577, Step 0: Total lambda max = 251.54107666015625, Loss = 0.0005511948256753385 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 609, Step 0: Total lambda max = 250.1850128173828, Loss = 0.0004710888024419546 !!!
+Checkpoint saved at step 5000: /n/holylabs/LABS/kdbrantley_lab/Lab/mwalden/results/wandb_checkpoints/kihfro7r/checkpoint_step_5000.pt
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 641, Step 0: Total lambda max = 228.0974884033203, Loss = 0.00037407386116683483 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 673, Step 0: Total lambda max = 220.74508666992188, Loss = 0.0003375961969140917 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 705, Step 0: Total lambda max = 206.62767028808594, Loss = 0.00038569574826397 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 737, Step 0: Total lambda max = 198.57542419433594, Loss = 0.0002864907728508115 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 769, Step 0: Total lambda max = 191.68345642089844, Loss = 0.00030070997308939695 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 801, Step 0: Total lambda max = 175.25526428222656, Loss = 0.0002935548545792699 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 833, Step 0: Total lambda max = 167.34405517578125, Loss = 0.0003044164623133838 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 865, Step 0: Total lambda max = 157.0771942138672, Loss = 0.00037112704012542963 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 897, Step 0: Total lambda max = 155.13870239257812, Loss = 0.00027708132984116673 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 929, Step 0: Total lambda max = 144.86627197265625, Loss = 0.0002940584672614932 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 961, Step 0: Total lambda max = 143.0032196044922, Loss = 0.0002258123131468892 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 993, Step 0: Total lambda max = 124.84288024902344, Loss = 0.00030419896938838065 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 1025, Step 0: Total lambda max = 123.84674072265625, Loss = 0.00022589307627640665 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 1057, Step 0: Total lambda max = 121.4130859375, Loss = 0.00026904698461294174 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 1089, Step 0: Total lambda max = 107.85063934326172, Loss = 0.0002542764414101839 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 1121, Step 0: Total lambda max = 116.78084564208984, Loss = 0.0002133200177922845 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 1153, Step 0: Total lambda max = 105.4388427734375, Loss = 0.0001998659281525761 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 1185, Step 0: Total lambda max = 104.58269500732422, Loss = 0.00023094812058843672 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 1217, Step 0: Total lambda max = 96.0396957397461, Loss = 0.00022828011424280703 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 1249, Step 0: Total lambda max = 93.4240951538086, Loss = 0.0002383028477197513 !!!
+Checkpoint saved at step 10000: /n/holylabs/LABS/kdbrantley_lab/Lab/mwalden/results/wandb_checkpoints/kihfro7r/checkpoint_step_10000.pt
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 1281, Step 0: Total lambda max = 87.8673324584961, Loss = 0.00020528263121377677 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 1313, Step 0: Total lambda max = 86.89323425292969, Loss = 0.00020631798543035984 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 1345, Step 0: Total lambda max = 86.72240447998047, Loss = 0.0001909649872686714 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 1377, Step 0: Total lambda max = 83.52079010009766, Loss = 0.00016433862037956715 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 1409, Step 0: Total lambda max = 76.78126525878906, Loss = 0.00019546487601473927 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 1441, Step 0: Total lambda max = 76.3866195678711, Loss = 0.0001739684958010912 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 1473, Step 0: Total lambda max = 72.4866714477539, Loss = 0.0001704299938865006 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 1505, Step 0: Total lambda max = 72.71456909179688, Loss = 0.00016025043441914022 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 1537, Step 0: Total lambda max = 67.53115844726562, Loss = 0.00016396984574384987 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 1569, Step 0: Total lambda max = 68.47152709960938, Loss = 0.00015691682347096503 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 1601, Step 0: Total lambda max = 67.37811279296875, Loss = 0.00015998297021724284 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 1633, Step 0: Total lambda max = 62.98908996582031, Loss = 0.0001678514527156949 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 1665, Step 0: Total lambda max = 63.062049865722656, Loss = 0.00014624737377744168 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 1697, Step 0: Total lambda max = 60.43992233276367, Loss = 0.00014351546997204423 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 1729, Step 0: Total lambda max = 62.5902214050293, Loss = 0.00015001287101767957 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 1761, Step 0: Total lambda max = 56.72169876098633, Loss = 0.00014381561777554452 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 1793, Step 0: Total lambda max = 55.49015426635742, Loss = 0.0001578586525283754 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 1825, Step 0: Total lambda max = 57.73118591308594, Loss = 0.00014085446309763938 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 1857, Step 0: Total lambda max = 53.49266052246094, Loss = 0.00014245821512304246 !!!
+Checkpoint saved at step 15000: /n/holylabs/LABS/kdbrantley_lab/Lab/mwalden/results/wandb_checkpoints/kihfro7r/checkpoint_step_15000.pt
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 1889, Step 0: Total lambda max = 53.96247100830078, Loss = 0.0001389998069498688 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 1921, Step 0: Total lambda max = 54.674163818359375, Loss = 0.0001451733842259273 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 1953, Step 0: Total lambda max = 51.08832550048828, Loss = 0.00012512909597717226 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 1985, Step 0: Total lambda max = 49.852760314941406, Loss = 0.00013592508912552148 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 2017, Step 0: Total lambda max = 50.308998107910156, Loss = 0.00013472893624566495 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 2049, Step 0: Total lambda max = 52.66466522216797, Loss = 0.00012083198816981167 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 2081, Step 0: Total lambda max = 44.439205169677734, Loss = 0.00013071397552266717 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 2113, Step 0: Total lambda max = 44.1494255065918, Loss = 0.00012474853429012 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 2145, Step 0: Total lambda max = 43.03082275390625, Loss = 0.00012122374027967453 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 2177, Step 0: Total lambda max = 44.303184509277344, Loss = 0.00012096075079170987 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 2209, Step 0: Total lambda max = 42.26897430419922, Loss = 0.00012349127791821957 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 2241, Step 0: Total lambda max = 41.30340576171875, Loss = 0.000123945705126971 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 2273, Step 0: Total lambda max = 41.0587272644043, Loss = 0.00011669964442262426 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 2305, Step 0: Total lambda max = 37.269927978515625, Loss = 0.00011271963740000501 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 2337, Step 0: Total lambda max = 40.899166107177734, Loss = 0.00011461342364782467 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 2369, Step 0: Total lambda max = 42.007625579833984, Loss = 0.00010735761316027492 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 2401, Step 0: Total lambda max = 38.902305603027344, Loss = 0.00010851979459403083 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 2433, Step 0: Total lambda max = 36.17955017089844, Loss = 0.00011062495468650013 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 2465, Step 0: Total lambda max = 35.532501220703125, Loss = 0.00011462811380624771 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 2497, Step 0: Total lambda max = 36.70732879638672, Loss = 0.00010464771185070276 !!!
+Checkpoint saved at step 20000: /n/holylabs/LABS/kdbrantley_lab/Lab/mwalden/results/wandb_checkpoints/kihfro7r/checkpoint_step_20000.pt
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 2529, Step 0: Total lambda max = 33.85253143310547, Loss = 0.00010315916733816266 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 2561, Step 0: Total lambda max = 36.990013122558594, Loss = 0.00010012582060880959 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 2593, Step 0: Total lambda max = 34.59524154663086, Loss = 9.967971709556878e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 2625, Step 0: Total lambda max = 32.39002227783203, Loss = 0.00011109661136288196 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 2657, Step 0: Total lambda max = 30.75615119934082, Loss = 0.00010191291221417487 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 2689, Step 0: Total lambda max = 31.461549758911133, Loss = 9.835892706178129e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 2721, Step 0: Total lambda max = 31.339996337890625, Loss = 0.00010382196342106909 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 2753, Step 0: Total lambda max = 33.23041534423828, Loss = 0.00010223112622043118 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 2785, Step 0: Total lambda max = 31.78327751159668, Loss = 9.965016215573996e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 2817, Step 0: Total lambda max = 30.960830688476562, Loss = 9.160026820609346e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 2849, Step 0: Total lambda max = 29.215890884399414, Loss = 9.671339648775756e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 2881, Step 0: Total lambda max = 29.56352996826172, Loss = 9.498880535829812e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 2913, Step 0: Total lambda max = 27.41609764099121, Loss = 8.992671791929752e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 2945, Step 0: Total lambda max = 27.197805404663086, Loss = 8.804011304164305e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 2977, Step 0: Total lambda max = 27.04841423034668, Loss = 8.857094508130103e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 3009, Step 0: Total lambda max = 29.591217041015625, Loss = 9.274657350033522e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 3041, Step 0: Total lambda max = 26.6187686920166, Loss = 8.864990377333015e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 3073, Step 0: Total lambda max = 26.487873077392578, Loss = 8.638601866550744e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 3105, Step 0: Total lambda max = 28.439489364624023, Loss = 8.764203084865585e-05 !!!
+Checkpoint saved at step 25000: /n/holylabs/LABS/kdbrantley_lab/Lab/mwalden/results/wandb_checkpoints/kihfro7r/checkpoint_step_25000.pt
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 3137, Step 0: Total lambda max = 26.932872772216797, Loss = 8.574397361371666e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 3169, Step 0: Total lambda max = 25.58574867248535, Loss = 8.364603854715824e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 3201, Step 0: Total lambda max = 25.293787002563477, Loss = 8.575372339691967e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 3233, Step 0: Total lambda max = 26.279083251953125, Loss = 8.759273623581976e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 3265, Step 0: Total lambda max = 22.345916748046875, Loss = 8.610550139565021e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 3297, Step 0: Total lambda max = 23.980098724365234, Loss = 8.305581286549568e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 3329, Step 0: Total lambda max = 23.43930435180664, Loss = 7.889475818956271e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 3361, Step 0: Total lambda max = 22.426729202270508, Loss = 7.847714732633904e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 3393, Step 0: Total lambda max = 23.32370376586914, Loss = 7.508305134251714e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 3425, Step 0: Total lambda max = 24.566816329956055, Loss = 8.061063999775797e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 3457, Step 0: Total lambda max = 23.093124389648438, Loss = 8.071456250036135e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 3489, Step 0: Total lambda max = 23.573326110839844, Loss = 7.96174572315067e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 3521, Step 0: Total lambda max = 23.197786331176758, Loss = 8.078135579125956e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 3553, Step 0: Total lambda max = 22.812896728515625, Loss = 7.287329935934395e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 3585, Step 0: Total lambda max = 20.989234924316406, Loss = 8.185794285964221e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 3617, Step 0: Total lambda max = 22.796184539794922, Loss = 7.022104546194896e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 3649, Step 0: Total lambda max = 22.06546401977539, Loss = 7.407422526739538e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 3681, Step 0: Total lambda max = 20.976694107055664, Loss = 7.706825999775901e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 3713, Step 0: Total lambda max = 19.999418258666992, Loss = 7.13087065378204e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 3745, Step 0: Total lambda max = 20.22355079650879, Loss = 7.322755845962092e-05 !!!
+Checkpoint saved at step 30000: /n/holylabs/LABS/kdbrantley_lab/Lab/mwalden/results/wandb_checkpoints/kihfro7r/checkpoint_step_30000.pt
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 3777, Step 0: Total lambda max = 20.43441390991211, Loss = 7.437116437358782e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 3809, Step 0: Total lambda max = 21.764068603515625, Loss = 6.964903877815232e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 3841, Step 0: Total lambda max = 20.019079208374023, Loss = 7.31624459149316e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 3873, Step 0: Total lambda max = 19.555925369262695, Loss = 7.42457777960226e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 3905, Step 0: Total lambda max = 19.708728790283203, Loss = 7.033723522908986e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 3937, Step 0: Total lambda max = 20.70654296875, Loss = 7.351462409133092e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 3969, Step 0: Total lambda max = 20.556440353393555, Loss = 6.986854714341462e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 4001, Step 0: Total lambda max = 20.54925537109375, Loss = 7.364974590018392e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 4033, Step 0: Total lambda max = 19.196924209594727, Loss = 7.838911551516503e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 4065, Step 0: Total lambda max = 19.133207321166992, Loss = 7.170773460529745e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 4097, Step 0: Total lambda max = 19.619136810302734, Loss = 6.849697092548013e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 4129, Step 0: Total lambda max = 19.2395076751709, Loss = 6.851030047982931e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 4161, Step 0: Total lambda max = 19.087318420410156, Loss = 6.909334479132667e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 4193, Step 0: Total lambda max = 19.839088439941406, Loss = 6.240774382604286e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 4225, Step 0: Total lambda max = 19.502153396606445, Loss = 6.563576607732102e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 4257, Step 0: Total lambda max = 19.672983169555664, Loss = 6.806345481891185e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 4289, Step 0: Total lambda max = 20.26670265197754, Loss = 7.036158058326691e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 4321, Step 0: Total lambda max = 19.572336196899414, Loss = 6.148311513243243e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 4353, Step 0: Total lambda max = 19.82710838317871, Loss = 6.586370000150055e-05 !!!
+Checkpoint saved at step 35000: /n/holylabs/LABS/kdbrantley_lab/Lab/mwalden/results/wandb_checkpoints/kihfro7r/checkpoint_step_35000.pt
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 4385, Step 0: Total lambda max = 19.48709487915039, Loss = 6.744294660165906e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 4417, Step 0: Total lambda max = 19.13982391357422, Loss = 6.990948895690963e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 4449, Step 0: Total lambda max = 19.481605529785156, Loss = 6.252822640817612e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 4481, Step 0: Total lambda max = 19.480587005615234, Loss = 6.130425754236057e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 4513, Step 0: Total lambda max = 19.55044937133789, Loss = 6.447428313549608e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 4545, Step 0: Total lambda max = 19.528337478637695, Loss = 6.003688758937642e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 4577, Step 0: Total lambda max = 19.297992706298828, Loss = 6.215750181581825e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 4609, Step 0: Total lambda max = 19.59360122680664, Loss = 6.614183075726032e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 4641, Step 0: Total lambda max = 19.339149475097656, Loss = 6.0866139392601326e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 4673, Step 0: Total lambda max = 19.463998794555664, Loss = 6.506746285595e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 4705, Step 0: Total lambda max = 19.310747146606445, Loss = 5.725174560211599e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 4737, Step 0: Total lambda max = 19.8896484375, Loss = 6.443473102990538e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 4769, Step 0: Total lambda max = 19.346752166748047, Loss = 6.02006766712293e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 4801, Step 0: Total lambda max = 19.513534545898438, Loss = 6.228692654985934e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 4833, Step 0: Total lambda max = 19.9058895111084, Loss = 6.162057252367958e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 4865, Step 0: Total lambda max = 19.91881561279297, Loss = 6.0031077737221494e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 4897, Step 0: Total lambda max = 19.489389419555664, Loss = 6.449771171901375e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 4929, Step 0: Total lambda max = 19.68207550048828, Loss = 6.006450348650105e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 4961, Step 0: Total lambda max = 19.777271270751953, Loss = 6.328203016892076e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 4993, Step 0: Total lambda max = 19.14685821533203, Loss = 6.391537317540497e-05 !!!
+Checkpoint saved at step 40000: /n/holylabs/LABS/kdbrantley_lab/Lab/mwalden/results/wandb_checkpoints/kihfro7r/checkpoint_step_40000.pt
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 5025, Step 0: Total lambda max = 19.382932662963867, Loss = 6.832226790720597e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 5057, Step 0: Total lambda max = 20.168643951416016, Loss = 6.047422357369214e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 5089, Step 0: Total lambda max = 20.07434844970703, Loss = 5.978017361485399e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 5121, Step 0: Total lambda max = 19.694007873535156, Loss = 6.052462413208559e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 5153, Step 0: Total lambda max = 20.096696853637695, Loss = 6.354276411002502e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 5185, Step 0: Total lambda max = 19.446441650390625, Loss = 6.174976442707703e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 5217, Step 0: Total lambda max = 19.726791381835938, Loss = 6.333805504254997e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 5249, Step 0: Total lambda max = 19.523250579833984, Loss = 6.0224640037631616e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 5281, Step 0: Total lambda max = 19.891820907592773, Loss = 6.000577559461817e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 5313, Step 0: Total lambda max = 20.331584930419922, Loss = 6.391806527972221e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 5345, Step 0: Total lambda max = 20.146055221557617, Loss = 6.185856182128191e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 5377, Step 0: Total lambda max = 20.329008102416992, Loss = 5.9729685744969174e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 5409, Step 0: Total lambda max = 19.71280288696289, Loss = 5.542142753256485e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 5441, Step 0: Total lambda max = 19.9344425201416, Loss = 5.636753485305235e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 5473, Step 0: Total lambda max = 19.98216438293457, Loss = 6.114902498666197e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 5505, Step 0: Total lambda max = 20.038923263549805, Loss = 6.089115049690008e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 5537, Step 0: Total lambda max = 19.97154998779297, Loss = 5.4325053497450426e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 5569, Step 0: Total lambda max = 20.201946258544922, Loss = 6.088933878345415e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 5601, Step 0: Total lambda max = 20.018226623535156, Loss = 5.489950126502663e-05 !!!
+Checkpoint saved at step 45000: /n/holylabs/LABS/kdbrantley_lab/Lab/mwalden/results/wandb_checkpoints/kihfro7r/checkpoint_step_45000.pt
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 5633, Step 0: Total lambda max = 20.316682815551758, Loss = 5.67020324524492e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 5665, Step 0: Total lambda max = 20.398630142211914, Loss = 5.9815458371303976e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 5697, Step 0: Total lambda max = 20.142606735229492, Loss = 5.2802672144025564e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 5729, Step 0: Total lambda max = 20.490758895874023, Loss = 5.691531259799376e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 5761, Step 0: Total lambda max = 20.209470748901367, Loss = 5.9065620007459074e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 5793, Step 0: Total lambda max = 20.36313819885254, Loss = 5.4989934142213315e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 5825, Step 0: Total lambda max = 20.357717514038086, Loss = 5.702262933482416e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 5857, Step 0: Total lambda max = 20.120018005371094, Loss = 5.9323228924768046e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 5889, Step 0: Total lambda max = 19.986522674560547, Loss = 5.3702020522905514e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 5921, Step 0: Total lambda max = 20.239776611328125, Loss = 5.268159293336794e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 5953, Step 0: Total lambda max = 20.73680877685547, Loss = 5.5256314226426184e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 5985, Step 0: Total lambda max = 20.525487899780273, Loss = 5.908178354729898e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 6017, Step 0: Total lambda max = 20.485477447509766, Loss = 5.9448131651151925e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 6049, Step 0: Total lambda max = 20.750375747680664, Loss = 5.912251799600199e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 6081, Step 0: Total lambda max = 20.133745193481445, Loss = 5.211030293139629e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 6113, Step 0: Total lambda max = 20.53603744506836, Loss = 5.5965338106034324e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 6145, Step 0: Total lambda max = 20.61036491394043, Loss = 6.175128510221839e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 6177, Step 0: Total lambda max = 20.63119125366211, Loss = 5.797230187454261e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 6209, Step 0: Total lambda max = 20.121536254882812, Loss = 5.615387999569066e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 6241, Step 0: Total lambda max = 20.468873977661133, Loss = 5.503893407876603e-05 !!!
+Checkpoint saved at step 50000: /n/holylabs/LABS/kdbrantley_lab/Lab/mwalden/results/wandb_checkpoints/kihfro7r/checkpoint_step_50000.pt
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 6273, Step 0: Total lambda max = 19.926637649536133, Loss = 5.993698869133368e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 6305, Step 0: Total lambda max = 20.66986083984375, Loss = 5.430434976005927e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 6337, Step 0: Total lambda max = 20.764921188354492, Loss = 5.190796218812466e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 6369, Step 0: Total lambda max = 20.637052536010742, Loss = 5.168925417819992e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 6401, Step 0: Total lambda max = 20.958709716796875, Loss = 5.288197280606255e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 6433, Step 0: Total lambda max = 19.8824462890625, Loss = 6.06471803621389e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 6465, Step 0: Total lambda max = 20.581745147705078, Loss = 5.673697160091251e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 6497, Step 0: Total lambda max = 20.049610137939453, Loss = 5.2472372772172093e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 6529, Step 0: Total lambda max = 20.145599365234375, Loss = 5.2366794989211485e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 6561, Step 0: Total lambda max = 20.610851287841797, Loss = 5.272808994050138e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 6593, Step 0: Total lambda max = 20.528657913208008, Loss = 6.0041034885216504e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 6625, Step 0: Total lambda max = 20.483266830444336, Loss = 5.5091193644329906e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 6657, Step 0: Total lambda max = 20.49383544921875, Loss = 5.148471245774999e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 6689, Step 0: Total lambda max = 20.874319076538086, Loss = 5.3074491006555036e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 6721, Step 0: Total lambda max = 20.74602508544922, Loss = 5.424425035016611e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 6753, Step 0: Total lambda max = 20.3277530670166, Loss = 5.175135447643697e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 6785, Step 0: Total lambda max = 20.981159210205078, Loss = 5.226895518717356e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 6817, Step 0: Total lambda max = 20.70207977294922, Loss = 4.971363887307234e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 6849, Step 0: Total lambda max = 21.229522705078125, Loss = 5.673721170751378e-05 !!!
+Checkpoint saved at step 55000: /n/holylabs/LABS/kdbrantley_lab/Lab/mwalden/results/wandb_checkpoints/kihfro7r/checkpoint_step_55000.pt
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 6881, Step 0: Total lambda max = 20.202341079711914, Loss = 4.8404028348159045e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 6913, Step 0: Total lambda max = 20.310476303100586, Loss = 5.396887718234211e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 6945, Step 0: Total lambda max = 20.625911712646484, Loss = 5.801358202006668e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 6977, Step 0: Total lambda max = 20.633930206298828, Loss = 5.370612780097872e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 7009, Step 0: Total lambda max = 20.61033058166504, Loss = 5.189879084355198e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 7041, Step 0: Total lambda max = 20.763559341430664, Loss = 5.421929381554946e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 7073, Step 0: Total lambda max = 20.688426971435547, Loss = 4.7192454076139256e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 7105, Step 0: Total lambda max = 20.509485244750977, Loss = 4.762486423715018e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 7137, Step 0: Total lambda max = 20.576658248901367, Loss = 5.159751162864268e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 7169, Step 0: Total lambda max = 21.213754653930664, Loss = 5.741777567891404e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 7201, Step 0: Total lambda max = 21.168508529663086, Loss = 5.155908002052456e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 7233, Step 0: Total lambda max = 21.34598731994629, Loss = 5.122090078657493e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 7265, Step 0: Total lambda max = 20.790163040161133, Loss = 5.404301191447303e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 7297, Step 0: Total lambda max = 20.902921676635742, Loss = 5.503858847077936e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 7329, Step 0: Total lambda max = 21.046401977539062, Loss = 5.0588852900546044e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 7361, Step 0: Total lambda max = 21.398469924926758, Loss = 5.1603994506876916e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 7393, Step 0: Total lambda max = 21.321807861328125, Loss = 5.042482371209189e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 7425, Step 0: Total lambda max = 21.356124877929688, Loss = 4.9606154789216816e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 7457, Step 0: Total lambda max = 20.8281192779541, Loss = 5.085876182420179e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 7489, Step 0: Total lambda max = 20.984296798706055, Loss = 5.028128362027928e-05 !!!
+Checkpoint saved at step 60000: /n/holylabs/LABS/kdbrantley_lab/Lab/mwalden/results/wandb_checkpoints/kihfro7r/checkpoint_step_60000.pt
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 7521, Step 0: Total lambda max = 20.962844848632812, Loss = 5.6548255088273436e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 7553, Step 0: Total lambda max = 21.602523803710938, Loss = 5.269650500849821e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 7585, Step 0: Total lambda max = 21.359729766845703, Loss = 5.428130316431634e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 7617, Step 0: Total lambda max = 21.018423080444336, Loss = 4.78343281429261e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 7649, Step 0: Total lambda max = 21.21571159362793, Loss = 5.092938226880506e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 7681, Step 0: Total lambda max = 21.550214767456055, Loss = 5.0684910092968494e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 7713, Step 0: Total lambda max = 21.064287185668945, Loss = 5.502432395587675e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 7745, Step 0: Total lambda max = 21.508596420288086, Loss = 4.910491406917572e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 7777, Step 0: Total lambda max = 21.24405288696289, Loss = 5.1742095820372924e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 7809, Step 0: Total lambda max = 21.266366958618164, Loss = 4.9824375309981406e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 7841, Step 0: Total lambda max = 21.67444610595703, Loss = 4.893272853223607e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 7873, Step 0: Total lambda max = 20.989484786987305, Loss = 5.288781540002674e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 7905, Step 0: Total lambda max = 21.818729400634766, Loss = 5.051914195064455e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 7937, Step 0: Total lambda max = 21.10916519165039, Loss = 4.90727397846058e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 7969, Step 0: Total lambda max = 21.85597801208496, Loss = 5.012963083572686e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 8001, Step 0: Total lambda max = 21.262311935424805, Loss = 5.102144132251851e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 8033, Step 0: Total lambda max = 22.185705184936523, Loss = 5.376549961511046e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 8065, Step 0: Total lambda max = 21.693449020385742, Loss = 4.86338249174878e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 8097, Step 0: Total lambda max = 21.696598052978516, Loss = 4.9448281060904264e-05 !!!
+Checkpoint saved at step 65000: /n/holylabs/LABS/kdbrantley_lab/Lab/mwalden/results/wandb_checkpoints/kihfro7r/checkpoint_step_65000.pt
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 8129, Step 0: Total lambda max = 21.36107063293457, Loss = 5.087990575702861e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 8161, Step 0: Total lambda max = 21.36397933959961, Loss = 4.8593014071229845e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 8193, Step 0: Total lambda max = 21.447690963745117, Loss = 4.869559415965341e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 8225, Step 0: Total lambda max = 21.646207809448242, Loss = 4.862573405262083e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 8257, Step 0: Total lambda max = 22.102556228637695, Loss = 5.1029757742071524e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 8289, Step 0: Total lambda max = 21.507099151611328, Loss = 4.9534428399056196e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 8321, Step 0: Total lambda max = 21.46166229248047, Loss = 5.396192500484176e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 8353, Step 0: Total lambda max = 21.39108657836914, Loss = 5.2505281928461045e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 8385, Step 0: Total lambda max = 21.760883331298828, Loss = 4.853688005823642e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 8417, Step 0: Total lambda max = 21.397706985473633, Loss = 5.3771655075252056e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 8449, Step 0: Total lambda max = 21.78120994567871, Loss = 4.797492147190496e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 8481, Step 0: Total lambda max = 21.362533569335938, Loss = 4.950026050209999e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 8513, Step 0: Total lambda max = 21.602636337280273, Loss = 4.8213529225904495e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 8545, Step 0: Total lambda max = 22.163877487182617, Loss = 5.089107798994519e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 8577, Step 0: Total lambda max = 22.075763702392578, Loss = 5.111976133775897e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 8609, Step 0: Total lambda max = 21.763071060180664, Loss = 4.910318966722116e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 8641, Step 0: Total lambda max = 21.7137393951416, Loss = 5.666433571605012e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 8673, Step 0: Total lambda max = 21.680240631103516, Loss = 4.9943722842726856e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 8705, Step 0: Total lambda max = 22.218544006347656, Loss = 5.625905032502487e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 8737, Step 0: Total lambda max = 21.680559158325195, Loss = 4.5531385694630444e-05 !!!
+Checkpoint saved at step 70000: /n/holylabs/LABS/kdbrantley_lab/Lab/mwalden/results/wandb_checkpoints/kihfro7r/checkpoint_step_70000.pt
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 8769, Step 0: Total lambda max = 21.78425407409668, Loss = 5.000365126761608e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 8801, Step 0: Total lambda max = 22.281784057617188, Loss = 4.6008004574105144e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 8833, Step 0: Total lambda max = 22.370983123779297, Loss = 4.7584311687387526e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 8865, Step 0: Total lambda max = 21.884302139282227, Loss = 4.9150326958624646e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 8897, Step 0: Total lambda max = 21.82278060913086, Loss = 4.713222006103024e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 8929, Step 0: Total lambda max = 21.647104263305664, Loss = 4.705890023615211e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 8961, Step 0: Total lambda max = 21.89763641357422, Loss = 4.4828528189100325e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 8993, Step 0: Total lambda max = 21.737937927246094, Loss = 4.9315796786686406e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 9025, Step 0: Total lambda max = 22.197036743164062, Loss = 5.015300848754123e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 9057, Step 0: Total lambda max = 22.52150535583496, Loss = 4.8916273954091594e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 9089, Step 0: Total lambda max = 21.581920623779297, Loss = 4.705547326011583e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 9121, Step 0: Total lambda max = 22.468427658081055, Loss = 4.564690971164964e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 9153, Step 0: Total lambda max = 22.247081756591797, Loss = 5.041572148911655e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 9185, Step 0: Total lambda max = 22.046899795532227, Loss = 5.4788524721516296e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 9217, Step 0: Total lambda max = 22.06815528869629, Loss = 4.7583573177689686e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 9249, Step 0: Total lambda max = 21.782373428344727, Loss = 4.260103014530614e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 9281, Step 0: Total lambda max = 22.542409896850586, Loss = 4.582499241223559e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 9313, Step 0: Total lambda max = 22.47395896911621, Loss = 4.643067586584948e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 9345, Step 0: Total lambda max = 22.124324798583984, Loss = 5.0873117288574576e-05 !!!
+Checkpoint saved at step 75000: /n/holylabs/LABS/kdbrantley_lab/Lab/mwalden/results/wandb_checkpoints/kihfro7r/checkpoint_step_75000.pt
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 9377, Step 0: Total lambda max = 22.13484764099121, Loss = 4.731310764327645e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 9409, Step 0: Total lambda max = 22.64221954345703, Loss = 4.610112955560908e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 9441, Step 0: Total lambda max = 21.87965202331543, Loss = 5.133278318680823e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 9473, Step 0: Total lambda max = 22.25049591064453, Loss = 4.713534508482553e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 9505, Step 0: Total lambda max = 23.020832061767578, Loss = 4.677338438341394e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 9537, Step 0: Total lambda max = 22.477598190307617, Loss = 4.740671283798292e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 9569, Step 0: Total lambda max = 22.487825393676758, Loss = 4.830693069379777e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 9601, Step 0: Total lambda max = 22.458538055419922, Loss = 5.209370647207834e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 9633, Step 0: Total lambda max = 22.35831642150879, Loss = 4.373874980956316e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 9665, Step 0: Total lambda max = 22.319597244262695, Loss = 4.4954933400731534e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 9697, Step 0: Total lambda max = 22.267581939697266, Loss = 4.894036828773096e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 9729, Step 0: Total lambda max = 22.597551345825195, Loss = 4.8244852223433554e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 9761, Step 0: Total lambda max = 22.691791534423828, Loss = 4.6435674448730424e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 9793, Step 0: Total lambda max = 22.82254981994629, Loss = 4.7144472773652524e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 9825, Step 0: Total lambda max = 22.292081832885742, Loss = 4.5240485633257776e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 9857, Step 0: Total lambda max = 22.95273780822754, Loss = 4.3932770495302975e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 9889, Step 0: Total lambda max = 22.427488327026367, Loss = 4.782942414749414e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 9921, Step 0: Total lambda max = 22.61638832092285, Loss = 4.7961773816496134e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 9953, Step 0: Total lambda max = 22.445669174194336, Loss = 4.764990444527939e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 9985, Step 0: Total lambda max = 22.548622131347656, Loss = 4.653531505027786e-05 !!!
+Checkpoint saved at step 80000: /n/holylabs/LABS/kdbrantley_lab/Lab/mwalden/results/wandb_checkpoints/kihfro7r/checkpoint_step_80000.pt
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 10017, Step 0: Total lambda max = 22.380247116088867, Loss = 4.336405254434794e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 10049, Step 0: Total lambda max = 22.623916625976562, Loss = 4.870941484114155e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 10081, Step 0: Total lambda max = 22.64699935913086, Loss = 4.553595499601215e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 10113, Step 0: Total lambda max = 22.919872283935547, Loss = 4.965648258803412e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 10145, Step 0: Total lambda max = 22.88039779663086, Loss = 4.4302825699560344e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 10177, Step 0: Total lambda max = 22.53043556213379, Loss = 4.731291119242087e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 10209, Step 0: Total lambda max = 23.41628074645996, Loss = 4.3990825361106545e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 10241, Step 0: Total lambda max = 23.280860900878906, Loss = 4.1752064134925604e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 10273, Step 0: Total lambda max = 22.8133487701416, Loss = 4.368907320895232e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 10305, Step 0: Total lambda max = 22.771244049072266, Loss = 3.940115129807964e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 10337, Step 0: Total lambda max = 23.018474578857422, Loss = 4.721005097962916e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 10369, Step 0: Total lambda max = 23.070358276367188, Loss = 4.438242467585951e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 10401, Step 0: Total lambda max = 23.336055755615234, Loss = 4.0798662666929886e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 10433, Step 0: Total lambda max = 23.163785934448242, Loss = 4.486797479330562e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 10465, Step 0: Total lambda max = 23.19070816040039, Loss = 3.671740341815166e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 10497, Step 0: Total lambda max = 23.104713439941406, Loss = 5.0475420721340925e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 10529, Step 0: Total lambda max = 23.15650177001953, Loss = 4.394187271827832e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 10561, Step 0: Total lambda max = 23.575361251831055, Loss = 5.0018628826364875e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 10593, Step 0: Total lambda max = 23.29511260986328, Loss = 4.3822477891808376e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 10625, Step 0: Total lambda max = 23.266328811645508, Loss = 5.151772347744554e-05 !!!
+Checkpoint saved at step 85000: /n/holylabs/LABS/kdbrantley_lab/Lab/mwalden/results/wandb_checkpoints/kihfro7r/checkpoint_step_85000.pt
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 10657, Step 0: Total lambda max = 22.99750328063965, Loss = 4.849721153732389e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 10689, Step 0: Total lambda max = 23.608179092407227, Loss = 4.642366911866702e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 10721, Step 0: Total lambda max = 23.312519073486328, Loss = 4.8380272346548736e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 10753, Step 0: Total lambda max = 23.790462493896484, Loss = 4.12266053899657e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 10785, Step 0: Total lambda max = 23.632476806640625, Loss = 4.415114744915627e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 10817, Step 0: Total lambda max = 23.172361373901367, Loss = 4.182155680609867e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 10849, Step 0: Total lambda max = 23.655736923217773, Loss = 4.5510918425861746e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 10881, Step 0: Total lambda max = 23.25802993774414, Loss = 4.2614919948391616e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 10913, Step 0: Total lambda max = 23.34093475341797, Loss = 4.4206193706486374e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 10945, Step 0: Total lambda max = 23.61207389831543, Loss = 4.478235132410191e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 10977, Step 0: Total lambda max = 23.889999389648438, Loss = 4.244919909979217e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 11009, Step 0: Total lambda max = 23.671279907226562, Loss = 4.7487155825365335e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 11041, Step 0: Total lambda max = 23.8091983795166, Loss = 4.374076161184348e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 11073, Step 0: Total lambda max = 23.988574981689453, Loss = 4.085897671757266e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 11105, Step 0: Total lambda max = 23.82686424255371, Loss = 4.176278889644891e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 11137, Step 0: Total lambda max = 23.68008041381836, Loss = 3.752532211365178e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 11169, Step 0: Total lambda max = 24.018861770629883, Loss = 4.256453030393459e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 11201, Step 0: Total lambda max = 23.736888885498047, Loss = 4.389006062410772e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 11233, Step 0: Total lambda max = 23.782135009765625, Loss = 4.2273764847777784e-05 !!!
+Checkpoint saved at step 90000: /n/holylabs/LABS/kdbrantley_lab/Lab/mwalden/results/wandb_checkpoints/kihfro7r/checkpoint_step_90000.pt
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 11265, Step 0: Total lambda max = 23.988059997558594, Loss = 4.129907756578177e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 11297, Step 0: Total lambda max = 24.199312210083008, Loss = 4.243181683705188e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 11329, Step 0: Total lambda max = 24.193126678466797, Loss = 4.252094731782563e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 11361, Step 0: Total lambda max = 24.027509689331055, Loss = 4.238522524246946e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 11393, Step 0: Total lambda max = 23.6846981048584, Loss = 3.927143552573398e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 11425, Step 0: Total lambda max = 24.154987335205078, Loss = 4.1664337913971394e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 11457, Step 0: Total lambda max = 24.32871437072754, Loss = 4.566135976347141e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 11489, Step 0: Total lambda max = 24.003938674926758, Loss = 4.496633482631296e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 11521, Step 0: Total lambda max = 24.06316566467285, Loss = 4.344895569374785e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 11553, Step 0: Total lambda max = 23.813823699951172, Loss = 4.986539715901017e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 11585, Step 0: Total lambda max = 24.15776252746582, Loss = 4.452511711861007e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 11617, Step 0: Total lambda max = 23.799903869628906, Loss = 3.8388265238609165e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 11649, Step 0: Total lambda max = 24.114774703979492, Loss = 4.307058043195866e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 11681, Step 0: Total lambda max = 24.192020416259766, Loss = 4.3003099563065916e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 11713, Step 0: Total lambda max = 24.468677520751953, Loss = 4.370687747723423e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 11745, Step 0: Total lambda max = 24.2303409576416, Loss = 4.200688636046834e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 11777, Step 0: Total lambda max = 24.329294204711914, Loss = 4.078693382325582e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 11809, Step 0: Total lambda max = 24.41636085510254, Loss = 4.160386379226111e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 11841, Step 0: Total lambda max = 24.13749122619629, Loss = 4.502708179643378e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 11873, Step 0: Total lambda max = 24.194177627563477, Loss = 3.7209392758086324e-05 !!!
+Checkpoint saved at step 95000: /n/holylabs/LABS/kdbrantley_lab/Lab/mwalden/results/wandb_checkpoints/kihfro7r/checkpoint_step_95000.pt
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 11905, Step 0: Total lambda max = 24.215534210205078, Loss = 4.3551721319090575e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 11937, Step 0: Total lambda max = 24.39800453186035, Loss = 4.448263280210085e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 11969, Step 0: Total lambda max = 24.629343032836914, Loss = 4.232318315189332e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 12001, Step 0: Total lambda max = 24.626728057861328, Loss = 4.0901712054619566e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 12033, Step 0: Total lambda max = 24.414094924926758, Loss = 4.18524541601073e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 12065, Step 0: Total lambda max = 23.953716278076172, Loss = 3.7417841667775065e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 12097, Step 0: Total lambda max = 24.544897079467773, Loss = 3.765038854908198e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 12129, Step 0: Total lambda max = 24.53729248046875, Loss = 3.756413207156584e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 12161, Step 0: Total lambda max = 24.1429500579834, Loss = 3.973780985688791e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 12193, Step 0: Total lambda max = 24.399168014526367, Loss = 4.526934935711324e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 12225, Step 0: Total lambda max = 24.305612564086914, Loss = 3.6595760320778936e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 12257, Step 0: Total lambda max = 24.140424728393555, Loss = 3.990963159594685e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 12289, Step 0: Total lambda max = 24.526283264160156, Loss = 3.801294951699674e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 12321, Step 0: Total lambda max = 24.29055404663086, Loss = 4.649006586987525e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 12353, Step 0: Total lambda max = 24.314411163330078, Loss = 3.968710734625347e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 12385, Step 0: Total lambda max = 24.73202133178711, Loss = 4.054382588947192e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 12417, Step 0: Total lambda max = 24.19902229309082, Loss = 3.831090725725517e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 12449, Step 0: Total lambda max = 23.875333786010742, Loss = 3.9462527638534084e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 12481, Step 0: Total lambda max = 24.739913940429688, Loss = 3.513406409183517e-05 !!!
+Checkpoint saved at step 100000: /n/holylabs/LABS/kdbrantley_lab/Lab/mwalden/results/wandb_checkpoints/kihfro7r/checkpoint_step_100000.pt
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 12513, Step 0: Total lambda max = 23.96805191040039, Loss = 3.7686186260543764e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 12545, Step 0: Total lambda max = 24.207080841064453, Loss = 4.082227678736672e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 12577, Step 0: Total lambda max = 24.050588607788086, Loss = 4.0718332456890494e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 12609, Step 0: Total lambda max = 24.09957504272461, Loss = 4.399270983412862e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 12641, Step 0: Total lambda max = 24.058834075927734, Loss = 3.79945631721057e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 12673, Step 0: Total lambda max = 24.541431427001953, Loss = 4.143013939028606e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 12705, Step 0: Total lambda max = 24.182830810546875, Loss = 4.133475886192173e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 12737, Step 0: Total lambda max = 24.072528839111328, Loss = 3.538452438078821e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 12769, Step 0: Total lambda max = 24.104068756103516, Loss = 3.8623307773377746e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 12801, Step 0: Total lambda max = 24.276914596557617, Loss = 3.5028995625907555e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 12833, Step 0: Total lambda max = 24.331214904785156, Loss = 4.009039548691362e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 12865, Step 0: Total lambda max = 24.224824905395508, Loss = 4.2222374759148806e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 12897, Step 0: Total lambda max = 24.213924407958984, Loss = 3.819731864496134e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 12929, Step 0: Total lambda max = 24.188766479492188, Loss = 3.7676029023714364e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 12961, Step 0: Total lambda max = 23.66012191772461, Loss = 4.1607570892665535e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 12993, Step 0: Total lambda max = 24.067855834960938, Loss = 4.4742679165210575e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 13025, Step 0: Total lambda max = 24.28424835205078, Loss = 3.930483217118308e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 13057, Step 0: Total lambda max = 24.00849723815918, Loss = 3.889766230713576e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 13089, Step 0: Total lambda max = 24.343297958374023, Loss = 4.1604267607908696e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 13121, Step 0: Total lambda max = 24.29804039001465, Loss = 3.701369132613763e-05 !!!
+Checkpoint saved at step 105000: /n/holylabs/LABS/kdbrantley_lab/Lab/mwalden/results/wandb_checkpoints/kihfro7r/checkpoint_step_105000.pt
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 13153, Step 0: Total lambda max = 24.187522888183594, Loss = 3.724363341461867e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 13185, Step 0: Total lambda max = 24.480581283569336, Loss = 4.086495755473152e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 13217, Step 0: Total lambda max = 24.488828659057617, Loss = 3.740786632988602e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 13249, Step 0: Total lambda max = 23.825166702270508, Loss = 3.878763527609408e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 13281, Step 0: Total lambda max = 23.869979858398438, Loss = 3.782858038903214e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 13313, Step 0: Total lambda max = 24.253904342651367, Loss = 3.911133899237029e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 13345, Step 0: Total lambda max = 24.33345603942871, Loss = 4.3149131670361385e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 13377, Step 0: Total lambda max = 24.003137588500977, Loss = 3.396103420527652e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 13409, Step 0: Total lambda max = 23.986068725585938, Loss = 3.9001930417725816e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 13441, Step 0: Total lambda max = 23.99348258972168, Loss = 4.34095345553942e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 13473, Step 0: Total lambda max = 24.14044952392578, Loss = 3.595112866605632e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 13505, Step 0: Total lambda max = 23.789791107177734, Loss = 4.2257262975908816e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 13537, Step 0: Total lambda max = 24.032638549804688, Loss = 3.909823135472834e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 13569, Step 0: Total lambda max = 24.28218650817871, Loss = 3.4593333111843094e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 13601, Step 0: Total lambda max = 24.10538673400879, Loss = 3.925838245777413e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 13633, Step 0: Total lambda max = 24.128053665161133, Loss = 4.529410944087431e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 13665, Step 0: Total lambda max = 23.676860809326172, Loss = 3.981251938967034e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 13697, Step 0: Total lambda max = 24.079952239990234, Loss = 3.362068673595786e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 13729, Step 0: Total lambda max = 23.673608779907227, Loss = 3.579483745852485e-05 !!!
+Checkpoint saved at step 110000: /n/holylabs/LABS/kdbrantley_lab/Lab/mwalden/results/wandb_checkpoints/kihfro7r/checkpoint_step_110000.pt
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 13761, Step 0: Total lambda max = 23.634580612182617, Loss = 3.8137721276143566e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 13793, Step 0: Total lambda max = 23.97121810913086, Loss = 3.95206079701893e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 13825, Step 0: Total lambda max = 23.754150390625, Loss = 3.6722667573485523e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 13857, Step 0: Total lambda max = 23.83780288696289, Loss = 4.316431295592338e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 13889, Step 0: Total lambda max = 23.653270721435547, Loss = 3.8470738218165934e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 13921, Step 0: Total lambda max = 23.946542739868164, Loss = 3.582574936444871e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 13953, Step 0: Total lambda max = 23.99846839904785, Loss = 4.118850119994022e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 13985, Step 0: Total lambda max = 23.845340728759766, Loss = 3.204398672096431e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 14017, Step 0: Total lambda max = 24.07232666015625, Loss = 2.9817543691024184e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 14049, Step 0: Total lambda max = 23.911659240722656, Loss = 4.1237217374145985e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 14081, Step 0: Total lambda max = 23.782039642333984, Loss = 3.282117177150212e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 14113, Step 0: Total lambda max = 23.91773796081543, Loss = 3.42855419148691e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 14145, Step 0: Total lambda max = 23.75871467590332, Loss = 3.58079923898913e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 14177, Step 0: Total lambda max = 23.546884536743164, Loss = 3.795489465119317e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 14209, Step 0: Total lambda max = 23.49806785583496, Loss = 3.8298814615700394e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 14241, Step 0: Total lambda max = 23.49445152282715, Loss = 3.841640136670321e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 14273, Step 0: Total lambda max = 23.694427490234375, Loss = 4.396825534058735e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 14305, Step 0: Total lambda max = 23.924514770507812, Loss = 3.830473724519834e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 14337, Step 0: Total lambda max = 23.636287689208984, Loss = 3.656182889244519e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 14369, Step 0: Total lambda max = 23.527719497680664, Loss = 3.683714021462947e-05 !!!
+Checkpoint saved at step 115000: /n/holylabs/LABS/kdbrantley_lab/Lab/mwalden/results/wandb_checkpoints/kihfro7r/checkpoint_step_115000.pt
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 14401, Step 0: Total lambda max = 23.4139404296875, Loss = 3.662423841888085e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 14433, Step 0: Total lambda max = 23.335018157958984, Loss = 3.549099710653536e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 14465, Step 0: Total lambda max = 23.59241485595703, Loss = 3.999452746938914e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 14497, Step 0: Total lambda max = 23.48464584350586, Loss = 3.90430141123943e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 14529, Step 0: Total lambda max = 23.324434280395508, Loss = 3.618553091655485e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 14561, Step 0: Total lambda max = 23.243139266967773, Loss = 3.413544618524611e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 14593, Step 0: Total lambda max = 23.486173629760742, Loss = 3.8849248085170984e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 14625, Step 0: Total lambda max = 23.734331130981445, Loss = 3.334743087179959e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 14657, Step 0: Total lambda max = 23.321779251098633, Loss = 3.4815042454283684e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 14689, Step 0: Total lambda max = 23.484960556030273, Loss = 4.315147816669196e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 14721, Step 0: Total lambda max = 23.36151123046875, Loss = 3.5618533729575574e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 14753, Step 0: Total lambda max = 23.329700469970703, Loss = 3.1523046345682815e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 14785, Step 0: Total lambda max = 23.439697265625, Loss = 3.57041644747369e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 14817, Step 0: Total lambda max = 23.417917251586914, Loss = 3.215769538655877e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 14849, Step 0: Total lambda max = 23.177648544311523, Loss = 3.8474376196973026e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 14881, Step 0: Total lambda max = 23.623462677001953, Loss = 3.663315874291584e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 14913, Step 0: Total lambda max = 23.318702697753906, Loss = 3.51229464286007e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 14945, Step 0: Total lambda max = 23.042524337768555, Loss = 3.489166556391865e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 14977, Step 0: Total lambda max = 23.118242263793945, Loss = 4.017269384348765e-05 !!!
+Checkpoint saved at step 120000: /n/holylabs/LABS/kdbrantley_lab/Lab/mwalden/results/wandb_checkpoints/kihfro7r/checkpoint_step_120000.pt
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 15009, Step 0: Total lambda max = 23.116783142089844, Loss = 3.654246393125504e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 15041, Step 0: Total lambda max = 23.310379028320312, Loss = 3.755230864044279e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 15073, Step 0: Total lambda max = 23.5439510345459, Loss = 3.7163044908083975e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 15105, Step 0: Total lambda max = 23.065340042114258, Loss = 2.9713924959651195e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 15137, Step 0: Total lambda max = 23.107641220092773, Loss = 3.512408147798851e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 15169, Step 0: Total lambda max = 22.864656448364258, Loss = 3.0675273592351004e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 15201, Step 0: Total lambda max = 23.36611557006836, Loss = 3.59918994945474e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 15233, Step 0: Total lambda max = 23.572664260864258, Loss = 3.3817974326666445e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 15265, Step 0: Total lambda max = 23.068151473999023, Loss = 3.4604228858370334e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 15297, Step 0: Total lambda max = 23.061460494995117, Loss = 3.595642920117825e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 15329, Step 0: Total lambda max = 23.07901954650879, Loss = 3.653074236353859e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 15361, Step 0: Total lambda max = 22.540122985839844, Loss = 3.6607489164453e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 15393, Step 0: Total lambda max = 22.856271743774414, Loss = 3.4152762964367867e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 15425, Step 0: Total lambda max = 23.025745391845703, Loss = 2.936843884526752e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 15457, Step 0: Total lambda max = 22.935487747192383, Loss = 3.870896762236953e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 15489, Step 0: Total lambda max = 23.585060119628906, Loss = 3.8080645026639104e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 15521, Step 0: Total lambda max = 23.400339126586914, Loss = 3.321556141600013e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 15553, Step 0: Total lambda max = 22.998140335083008, Loss = 3.3457501558586955e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 15585, Step 0: Total lambda max = 23.261459350585938, Loss = 3.512887633405626e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 15617, Step 0: Total lambda max = 22.51948356628418, Loss = 3.875329275615513e-05 !!!
+Checkpoint saved at step 125000: /n/holylabs/LABS/kdbrantley_lab/Lab/mwalden/results/wandb_checkpoints/kihfro7r/checkpoint_step_125000.pt
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 15649, Step 0: Total lambda max = 22.603281021118164, Loss = 3.054616536246613e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 15681, Step 0: Total lambda max = 22.9022159576416, Loss = 3.632527295849286e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 15713, Step 0: Total lambda max = 22.915433883666992, Loss = 3.2896336051635444e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 15745, Step 0: Total lambda max = 22.62665367126465, Loss = 3.5233053495176136e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 15777, Step 0: Total lambda max = 22.8289794921875, Loss = 3.587808896554634e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 15809, Step 0: Total lambda max = 22.863855361938477, Loss = 3.158988693030551e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 15841, Step 0: Total lambda max = 22.53268051147461, Loss = 3.8467434933409095e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 15873, Step 0: Total lambda max = 22.541492462158203, Loss = 3.713358455570415e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 15905, Step 0: Total lambda max = 22.20796775817871, Loss = 3.340607509016991e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 15937, Step 0: Total lambda max = 22.373821258544922, Loss = 3.2788269891170785e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 15969, Step 0: Total lambda max = 22.791309356689453, Loss = 3.198855119990185e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 16001, Step 0: Total lambda max = 22.363651275634766, Loss = 3.7548335967585444e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 16033, Step 0: Total lambda max = 22.506460189819336, Loss = 3.326076330267824e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 16065, Step 0: Total lambda max = 22.551212310791016, Loss = 3.441744047449902e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 16097, Step 0: Total lambda max = 22.505460739135742, Loss = 3.28932364936918e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 16129, Step 0: Total lambda max = 22.154218673706055, Loss = 3.080994065385312e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 16161, Step 0: Total lambda max = 22.091981887817383, Loss = 3.5179793485440314e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 16193, Step 0: Total lambda max = 22.18247413635254, Loss = 2.906932422774844e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 16225, Step 0: Total lambda max = 22.40932273864746, Loss = 3.18180609610863e-05 !!!
+Checkpoint saved at step 130000: /n/holylabs/LABS/kdbrantley_lab/Lab/mwalden/results/wandb_checkpoints/kihfro7r/checkpoint_step_130000.pt
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 16257, Step 0: Total lambda max = 22.38783836364746, Loss = 4.57793430541642e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 16289, Step 0: Total lambda max = 22.59764289855957, Loss = 3.6148026993032545e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 16321, Step 0: Total lambda max = 22.159379959106445, Loss = 3.0625938961748034e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 16353, Step 0: Total lambda max = 21.966106414794922, Loss = 3.076366556342691e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 16385, Step 0: Total lambda max = 22.49087905883789, Loss = 3.224342071916908e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 16417, Step 0: Total lambda max = 21.946029663085938, Loss = 3.523582927300595e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 16449, Step 0: Total lambda max = 22.32351303100586, Loss = 3.1735587981529534e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 16481, Step 0: Total lambda max = 22.15929412841797, Loss = 2.7429989131633192e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 16513, Step 0: Total lambda max = 22.258371353149414, Loss = 3.3440788683947176e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 16545, Step 0: Total lambda max = 22.552894592285156, Loss = 3.2366151572205126e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 16577, Step 0: Total lambda max = 22.38289451599121, Loss = 2.9861908842576668e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 16609, Step 0: Total lambda max = 22.406156539916992, Loss = 3.488392394501716e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 16641, Step 0: Total lambda max = 22.27099609375, Loss = 3.634815220721066e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 16673, Step 0: Total lambda max = 22.40331268310547, Loss = 3.358997491886839e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 16705, Step 0: Total lambda max = 22.207469940185547, Loss = 2.801132359309122e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 16737, Step 0: Total lambda max = 21.819509506225586, Loss = 3.1861363822827116e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 16769, Step 0: Total lambda max = 22.106674194335938, Loss = 3.0205963412299752e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 16801, Step 0: Total lambda max = 22.053443908691406, Loss = 3.2664480386301875e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 16833, Step 0: Total lambda max = 21.869606018066406, Loss = 3.2139290851773694e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 16865, Step 0: Total lambda max = 21.875431060791016, Loss = 3.239518264308572e-05 !!!
+Checkpoint saved at step 135000: /n/holylabs/LABS/kdbrantley_lab/Lab/mwalden/results/wandb_checkpoints/kihfro7r/checkpoint_step_135000.pt
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 16897, Step 0: Total lambda max = 22.070703506469727, Loss = 2.7536509151104838e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 16929, Step 0: Total lambda max = 22.015432357788086, Loss = 3.3937758416868746e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 16961, Step 0: Total lambda max = 22.067035675048828, Loss = 2.6309609893360175e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 16993, Step 0: Total lambda max = 22.114646911621094, Loss = 3.096256477874704e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 17025, Step 0: Total lambda max = 21.93151092529297, Loss = 2.7102696549263783e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 17057, Step 0: Total lambda max = 21.62873077392578, Loss = 2.9802093195030466e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 17089, Step 0: Total lambda max = 22.000667572021484, Loss = 2.617821519379504e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 17121, Step 0: Total lambda max = 22.26297378540039, Loss = 3.303978155599907e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 17153, Step 0: Total lambda max = 21.899282455444336, Loss = 3.3744971005944535e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 17185, Step 0: Total lambda max = 21.847156524658203, Loss = 3.0537750717485324e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 17217, Step 0: Total lambda max = 21.69480323791504, Loss = 3.260313314967789e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 17249, Step 0: Total lambda max = 21.74177360534668, Loss = 3.992808342445642e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 17281, Step 0: Total lambda max = 21.963363647460938, Loss = 2.94176243187394e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 17313, Step 0: Total lambda max = 21.999710083007812, Loss = 3.17917947540991e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 17345, Step 0: Total lambda max = 21.8880672454834, Loss = 3.0019729820196517e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 17377, Step 0: Total lambda max = 21.848682403564453, Loss = 3.110316174570471e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 17409, Step 0: Total lambda max = 21.496061325073242, Loss = 3.3842778066173196e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 17441, Step 0: Total lambda max = 21.54783821105957, Loss = 2.9459421057254076e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 17473, Step 0: Total lambda max = 21.833045959472656, Loss = 2.945471896964591e-05 !!!
+Checkpoint saved at step 140000: /n/holylabs/LABS/kdbrantley_lab/Lab/mwalden/results/wandb_checkpoints/kihfro7r/checkpoint_step_140000.pt
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 17505, Step 0: Total lambda max = 21.691749572753906, Loss = 2.7461799618322402e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 17537, Step 0: Total lambda max = 21.953292846679688, Loss = 3.0031322239665315e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 17569, Step 0: Total lambda max = 21.99864959716797, Loss = 2.87116472463822e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 17601, Step 0: Total lambda max = 21.46759033203125, Loss = 2.6913578039966524e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 17633, Step 0: Total lambda max = 21.596439361572266, Loss = 3.0247952963691205e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 17665, Step 0: Total lambda max = 21.280298233032227, Loss = 3.3000447729136795e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 17697, Step 0: Total lambda max = 22.179439544677734, Loss = 3.385572199476883e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 17729, Step 0: Total lambda max = 21.746530532836914, Loss = 3.0751889426028356e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 17761, Step 0: Total lambda max = 21.638381958007812, Loss = 3.729276795638725e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 17793, Step 0: Total lambda max = 21.4971923828125, Loss = 3.42338316841051e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 17825, Step 0: Total lambda max = 21.635892868041992, Loss = 2.5322284272988327e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 17857, Step 0: Total lambda max = 21.70750617980957, Loss = 3.3464893931522965e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 17889, Step 0: Total lambda max = 21.830318450927734, Loss = 3.7915036955382675e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 17921, Step 0: Total lambda max = 21.451927185058594, Loss = 3.006781844305806e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 17953, Step 0: Total lambda max = 21.817792892456055, Loss = 3.288179141236469e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 17985, Step 0: Total lambda max = 21.692468643188477, Loss = 3.0205756047507748e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 18017, Step 0: Total lambda max = 21.694063186645508, Loss = 3.4135839086957276e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 18049, Step 0: Total lambda max = 21.21550178527832, Loss = 3.158418257953599e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 18081, Step 0: Total lambda max = 21.654659271240234, Loss = 3.205765096936375e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 18113, Step 0: Total lambda max = 21.504343032836914, Loss = 3.3742067898856476e-05 !!!
+Checkpoint saved at step 145000: /n/holylabs/LABS/kdbrantley_lab/Lab/mwalden/results/wandb_checkpoints/kihfro7r/checkpoint_step_145000.pt
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 18145, Step 0: Total lambda max = 21.566686630249023, Loss = 3.341846604598686e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 18177, Step 0: Total lambda max = 21.45115089416504, Loss = 3.153512079734355e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 18209, Step 0: Total lambda max = 21.689748764038086, Loss = 3.290546010248363e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 18241, Step 0: Total lambda max = 21.213869094848633, Loss = 3.232161543564871e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 18273, Step 0: Total lambda max = 21.534305572509766, Loss = 3.440159707679413e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 18305, Step 0: Total lambda max = 21.79175567626953, Loss = 3.144887523376383e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 18337, Step 0: Total lambda max = 21.393047332763672, Loss = 3.0207811505533755e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 18369, Step 0: Total lambda max = 21.600955963134766, Loss = 2.889103598135989e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 18401, Step 0: Total lambda max = 21.736791610717773, Loss = 2.9178281693020836e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 18433, Step 0: Total lambda max = 21.568017959594727, Loss = 2.9648190320585854e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 18465, Step 0: Total lambda max = 21.065929412841797, Loss = 2.7255759050603956e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 18497, Step 0: Total lambda max = 20.95785140991211, Loss = 2.8976224712096155e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 18529, Step 0: Total lambda max = 21.087865829467773, Loss = 2.9608101613121107e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 18561, Step 0: Total lambda max = 21.30961799621582, Loss = 3.114260107395239e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 18593, Step 0: Total lambda max = 21.214065551757812, Loss = 3.0510389478877187e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 18625, Step 0: Total lambda max = 21.151369094848633, Loss = 2.7250503990217112e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 18657, Step 0: Total lambda max = 21.21002197265625, Loss = 3.107713200733997e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 18689, Step 0: Total lambda max = 21.072772979736328, Loss = 2.9901633752160706e-05 !!!
+Warning: Computing eigenvalues on subset of 2048 samples instead of full dataset (8192 samples) due to memory/time constraints. Most of the time it is fine, but should be corrected
+Epoch 18721, Step 0: Total lambda max = 21.354524612426758, Loss = 2.9596743843285367e-05 !!!
+Checkpoint saved at step 150000: /n/holylabs/LABS/kdbrantley_lab/Lab/mwalden/results/wandb_checkpoints/kihfro7r/checkpoint_step_150000.pt
+Reached max steps 150000, stopping the training
+Final checkpoint saved: /n/holylabs/LABS/kdbrantley_lab/Lab/mwalden/results/wandb_checkpoints/kihfro7r/checkpoint_step_150007.pt
+Training finished at 2026-03-17 14:53:44
+Total training time: 1403.54 seconds
+Done: Muon_1024
+Tue Mar 17 14:53:47 EDT 2026

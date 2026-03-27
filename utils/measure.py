@@ -1,6 +1,7 @@
 import torch as T
 import torch
 import torch.nn as nn
+from contextlib import contextmanager
 from einops import rearrange, repeat
 from utils.nets import Muon, zeropower_via_newtonschulz5
 from torch import linalg as LA
@@ -33,7 +34,26 @@ __all__ = ['param_vector', 'param_length', 'flatt', 'grads_vector',
            'get_preconditioner_diag', 'create_preconditioned_hessian_vector_product',
            'compute_preconditioned_eigenvalues',
            'calculate_gbs', 'compute_gbs_per_batch', '_build_gbs_step',
-           'get_adam_last_grad']
+           'get_adam_last_grad',
+           'compute_gbs_extended_per_batch', 'compute_gbs_u_per_batch', 'calculate_gbs_suite',
+           'disable_flash_attention']
+
+
+@contextmanager
+def disable_flash_attention():
+    """Disable flash/mem-efficient attention for second-order gradient computations.
+    Flash attention produces an autograd graph incompatible with backward-of-backward.
+    Saves and restores previous state so nesting is safe.
+    """
+    flash_was = torch.backends.cuda.flash_sdp_enabled()
+    mem_eff_was = torch.backends.cuda.mem_efficient_sdp_enabled()
+    torch.backends.cuda.enable_flash_sdp(False)
+    torch.backends.cuda.enable_mem_efficient_sdp(False)
+    try:
+        yield
+    finally:
+        torch.backends.cuda.enable_flash_sdp(flash_was)
+        torch.backends.cuda.enable_mem_efficient_sdp(mem_eff_was)
 
 
 class EigenvectorCache:
@@ -1058,19 +1078,16 @@ def calculate_averaged_grad_H_grad(net,
         X_batch = X[random_idx]
         Y_batch = Y[random_idx]
 
-        loss = loss_fn(net(X_batch).squeeze(dim=-1), Y_batch)
-
-        
-        gHg, norm_g = compute_grad_H_grad(loss, net, return_ghg_gg_separately=True)
-        gHg = gHg.item()
-        norm_g = norm_g.item()
-        
-        
-        gHg_vals.append(gHg)
-        norm_g_vals.append(norm_g)
+        with disable_flash_attention():
+            loss = loss_fn(net(X_batch).squeeze(dim=-1), Y_batch)
+            gHg, norm_g = compute_grad_H_grad(loss, net, return_ghg_gg_separately=True)
+            gHg = gHg.item()
+            norm_g = norm_g.item()
+            gHg_vals.append(gHg)
+            norm_g_vals.append(norm_g)
 
         if i < min_estimates:
-            continue    
+            continue
 
         mean_x, mean_y = np.mean(x_vals), np.mean(y_vals)
         var_x,  var_y  = np.var(x_vals, ddof=1), np.var(y_vals, ddof=1)
@@ -1248,11 +1265,11 @@ def calculate_adaptive_batch_sharpness(net, X, Y, loss_fn, optimizer,
         X_batch = X[random_idx]
         Y_batch = Y[random_idx]
 
-        loss = loss_fn(net(X_batch).squeeze(dim=-1), Y_batch)
-
-        uHu, gu = compute_adaptive_grad_H_grad(loss, net, preconditioner_inv)
-        numerators.append(uHu.item())
-        denominators.append(gu.item())
+        with disable_flash_attention():
+            loss = loss_fn(net(X_batch).squeeze(dim=-1), Y_batch)
+            uHu, gu = compute_adaptive_grad_H_grad(loss, net, preconditioner_inv)
+            numerators.append(uHu.item())
+            denominators.append(gu.item())
 
         if i < min_estimates:
             continue
@@ -1360,13 +1377,13 @@ def calculate_adaptive_batch_sharpness_momentum(net, X, Y, loss_fn, optimizer,
         X_batch = X[random_idx]
         Y_batch = Y[random_idx]
 
-        loss = loss_fn(net(X_batch).squeeze(dim=-1), Y_batch)
-
-        sHs, gs = compute_adaptive_grad_H_grad_momentum(
-            loss, net, preconditioner_inv, momentum_buffer, beta,
-            frozen_step=frozen_step, adam_alpha=adam_alpha)
-        numerators.append(sHs.item())
-        denominators.append(gs.item())
+        with disable_flash_attention():
+            loss = loss_fn(net(X_batch).squeeze(dim=-1), Y_batch)
+            sHs, gs = compute_adaptive_grad_H_grad_momentum(
+                loss, net, preconditioner_inv, momentum_buffer, beta,
+                frozen_step=frozen_step, adam_alpha=adam_alpha)
+            numerators.append(sHs.item())
+            denominators.append(gs.item())
 
         if i < min_estimates:
             continue
@@ -1600,12 +1617,12 @@ def calculate_gbs(net, X, Y, loss_fn, optimizer,
         torch.cuda.empty_cache()
 
     for i in range(n_estimates):
-        idx = T.randperm(len(X), generator=rng)[:batch_size]
-        loss = loss_fn(net(X[idx]).squeeze(dim=-1), Y[idx])
-
-        sHs, sg = compute_gbs_per_batch(loss, net, optimizer)
-        numerators.append(sHs.item())
-        denom_negs.append(-sg.item())   # negate so denominator values > 0
+        with disable_flash_attention():
+            idx = T.randperm(len(X), generator=rng)[:batch_size]
+            loss = loss_fn(net(X[idx]).squeeze(dim=-1), Y[idx])
+            sHs, sg = compute_gbs_per_batch(loss, net, optimizer)
+            numerators.append(sHs.item())
+            denom_negs.append(-sg.item())   # negate so denominator values > 0
 
         if i < min_estimates:
             continue
@@ -1630,6 +1647,361 @@ def calculate_gbs(net, X, Y, loss_fn, optimizer,
         return np.nan
 
     return float(np.mean(numerators) / np.mean(denom_negs))
+
+
+################################################################################
+#                                                                              #
+#                         GBS SUITE — EXTENDED METRICS                         #
+#                                                                              #
+################################################################################
+
+
+def _power_iteration_hvp(g_flat, params, n_iter=10, v_init=None):
+    """Power iteration on the batch Hessian H_B using an existing autograd graph.
+
+    Args:
+        g_flat: Flattened batch gradient WITH computational graph
+                (i.e. from autograd.grad(loss, params, create_graph=True)).
+        params: List of network parameters (same as used for g_flat).
+        n_iter: Number of power-iteration steps.
+        v_init: Optional warm-start vector (detached Tensor, any shape).
+
+    Returns:
+        (lam_b, u_b): top Rayleigh quotient (float) and unit eigenvector (detached Tensor).
+    """
+    n = g_flat.shape[0]
+    device = g_flat.device
+    dtype = g_flat.dtype
+
+    if v_init is not None and v_init.shape[0] == n:
+        v = v_init.to(device=device, dtype=dtype).detach().clone()
+    else:
+        v = torch.randn(n, device=device, dtype=dtype)
+
+    norm_v = v.norm().item()
+    if norm_v < 1e-12:
+        v = torch.randn(n, device=device, dtype=dtype)
+    v = v / (v.norm() + 1e-12)
+
+    lam = 0.0
+    for i in range(n_iter):
+        retain = (i < n_iter - 1)
+        dot = T.dot(g_flat, v)
+        Hv_grads = torch.autograd.grad(dot, params, retain_graph=retain)
+        Hv_flat = flatt(Hv_grads).detach()
+        lam = T.dot(v, Hv_flat).item()
+        norm_hv = Hv_flat.norm().item()
+        if norm_hv < 1e-12:
+            break
+        v = Hv_flat / norm_hv
+
+    return lam, v
+
+
+def compute_gbs_extended_per_batch(loss, net, optimizer):
+    """Compute (s^T H_B s, s^T g, g^T H_B g, ‖g‖², ‖s‖²) for a single batch.
+
+    Uses two HVPs per batch: H_B s_B and H_B g_B.
+    Used by calculate_gbs_suite for the cheap GBS/BS/SS/cos_sg metrics.
+
+    Args:
+        loss: Scalar batch loss WITH retained computational graph.
+        net: Neural network.
+        optimizer: Optimizer (SGD/Adam/AdamW/RMSProp/Muon).
+
+    Returns:
+        Tuple[float, float, float, float, float]: (sHs, sg, gHg, gg, ss)
+            sHs  = s_B^T H_B s_B
+            sg   = s_B^T g_B   (typically negative for descent)
+            gHg  = g_B^T H_B g_B
+            gg   = ‖g_B‖²
+            ss   = ‖s_B‖²
+    """
+    params = list(net.parameters())
+    grads = torch.autograd.grad(loss, params, create_graph=True)
+    g_flat = flatt(grads)       # has graph
+    g_det = g_flat.detach()     # no graph
+
+    s_flat = _build_gbs_step(g_det, optimizer)
+
+    # HVP 1: H_B s_B (retain graph for second HVP)
+    Hs_flat = flatt(torch.autograd.grad(
+        T.dot(g_flat, s_flat), params, retain_graph=True)).detach()
+
+    # HVP 2: H_B g_B (release graph)
+    Hg_flat = flatt(torch.autograd.grad(
+        T.dot(g_flat, g_det), params, retain_graph=False)).detach()
+
+    sHs = T.dot(s_flat, Hs_flat).item()
+    sg  = T.dot(g_det, s_flat).item()
+    gHg = T.dot(g_det, Hg_flat).item()
+    gg  = T.dot(g_det, g_det).item()
+    ss  = T.dot(s_flat, s_flat).item()
+
+    return sHs, sg, gHg, gg, ss
+
+
+def compute_gbs_u_per_batch(loss, net, optimizer, v_init=None, n_iter=10):
+    """Compute GBS_u, cos_su, cos_gu for a single batch via power iteration.
+
+    GBS_u = (s_B · u_B) * λ_max(B) / (−g_B · u_B)
+    where u_B is the top eigenvector of H_B.
+
+    Args:
+        loss: Scalar batch loss WITH retained computational graph.
+        net: Neural network.
+        optimizer: Optimizer.
+        v_init: Optional warm-start eigenvector (detached, from previous batch).
+        n_iter: Number of power-iteration steps (default 10).
+
+    Returns:
+        Tuple: (gbs_u_val, cos_su, cos_gu, lam_b, u_b)
+    """
+    params = list(net.parameters())
+    grads = torch.autograd.grad(loss, params, create_graph=True)
+    g_flat = flatt(grads)       # has graph
+    g_det = g_flat.detach()
+
+    s_flat = _build_gbs_step(g_det, optimizer)
+
+    lam_b, u_b = _power_iteration_hvp(g_flat, params, n_iter=n_iter, v_init=v_init)
+
+    s_dot_u = T.dot(s_flat, u_b).item()
+    g_dot_u = T.dot(g_det, u_b).item()
+
+    denom = -g_dot_u
+    gbs_u_val = s_dot_u * lam_b / denom if abs(denom) > 1e-12 else float('nan')
+
+    cos_su = compute_cosine_similarity(s_flat, u_b)
+    cos_gu = compute_cosine_similarity(g_det, u_b)
+
+    return gbs_u_val, cos_su, cos_gu, lam_b, u_b
+
+
+def calculate_gbs_suite(net, X, Y, loss_fn, optimizer, batch_size,
+                        full_eigenvec=None, full_lmax=None,
+                        n_cheap=500, n_expensive=30, n_full=20,
+                        min_estimates=15, eps=0.005):
+    """Compute the full GBS measurement suite.
+
+    Three-phase Monte Carlo estimator:
+      Phase 1 (cheap):    GBS, BS, SS, cos_sg, GBS_ufull  (2 HVPs/batch)
+      Phase 2 (expensive): GBS_u, cos_su, cos_gu           (10 HVPs/batch via power iteration)
+      Phase 3 (full-HVP): GBS_g                            (1 full-dataset HVP/batch)
+
+    Args:
+        net: Neural network.
+        X, Y: Full training dataset tensors.
+        loss_fn: Loss function.
+        optimizer: Optimizer instance.
+        batch_size: Mini-batch size for estimation.
+        full_eigenvec: Top eigenvector of full-batch Hessian (for GBS_ufull). Optional.
+        full_lmax: Corresponding top eigenvalue (for GBS_ufull). Optional.
+        n_cheap: Max batches for phase 1.
+        n_expensive: Exact batches for phase 2.
+        n_full: Exact batches for phase 3.
+        min_estimates: Minimum batches before RSE convergence check.
+        eps: RSE convergence threshold.
+
+    Returns:
+        dict with keys: gbs, gbs_u, gbs_ufull, gbs_g, ss, bs, cos_sg, cos_su, cos_gu
+        All default to np.nan if not computable.
+    """
+    _KEYS = ['gbs', 'gbs_u', 'gbs_ufull', 'gbs_g', 'ss', 'bs', 'cos_sg', 'cos_su', 'cos_gu']
+    result = {k: np.nan for k in _KEYS}
+
+    _supported = (torch.optim.SGD, torch.optim.Adam, torch.optim.AdamW,
+                  torch.optim.RMSprop, Muon)
+    if not isinstance(optimizer, _supported):
+        return result
+
+    rng = gimme_new_rng()
+    params = list(net.parameters())
+    device = next(iter(params)).device
+
+    # Precompute full eigenvec on the model's device
+    u_full = None
+    if full_eigenvec is not None and full_lmax is not None:
+        u_full = full_eigenvec.to(device).detach()
+
+    # ================================================================
+    # Phase 1: Cheap loop — GBS, BS, SS, cos_sg, GBS_ufull
+    # 2 HVPs per batch; RSE convergence on GBS estimate.
+    # ================================================================
+    gbs_nums   = []
+    gbs_denoms = []   # store −s^T g  (positive for descent)
+    bs_nums    = []
+    bs_denoms  = []
+    ss_vals    = []   # per-batch ratio s^T H s / ‖s‖²
+    cos_sg_vals    = []
+    gbs_ufull_vals = []
+
+    for i in range(n_cheap):
+        try:
+            with disable_flash_attention():
+                idx = T.randperm(len(X), generator=rng)[:batch_size]
+                loss = loss_fn(net(X[idx]).squeeze(dim=-1), Y[idx])
+
+                grads = torch.autograd.grad(loss, params, create_graph=True)
+                g_flat = flatt(grads)
+                g_det  = g_flat.detach()
+                s_flat = _build_gbs_step(g_det, optimizer)
+
+                Hs_flat = flatt(torch.autograd.grad(
+                    T.dot(g_flat, s_flat), params, retain_graph=True)).detach()
+                Hg_flat = flatt(torch.autograd.grad(
+                    T.dot(g_flat, g_det), params, retain_graph=False)).detach()
+
+                sHs = T.dot(s_flat, Hs_flat).item()
+                sg  = T.dot(g_det,  s_flat).item()
+                gHg = T.dot(g_det,  Hg_flat).item()
+                gg  = T.dot(g_det,  g_det).item()
+                ss  = T.dot(s_flat, s_flat).item()
+
+                gbs_nums.append(sHs)
+                gbs_denoms.append(-sg)
+                bs_nums.append(gHg)
+                bs_denoms.append(gg)
+
+                if ss > 1e-24:
+                    ss_vals.append(sHs / ss)
+                if ss > 1e-24 and gg > 1e-24:
+                    cos_sg_vals.append(sg / (ss ** 0.5 * gg ** 0.5))
+
+            if u_full is not None:
+                s_dot_u = T.dot(s_flat, u_full).item()
+                g_dot_u = T.dot(g_det, u_full).item()
+                if abs(g_dot_u) > 1e-12:
+                    gbs_ufull_vals.append(s_dot_u * full_lmax / (-g_dot_u))
+
+        except Exception:
+            continue
+
+        # Delta-method RSE convergence check on GBS
+        if i >= min_estimates and len(gbs_nums) > 1:
+            mx, my = np.mean(gbs_nums), np.mean(gbs_denoms)
+            if abs(mx) > 1e-12 and abs(my) > 1e-12:
+                n = len(gbs_nums)
+                vx  = np.var(gbs_nums,   ddof=1)
+                vy  = np.var(gbs_denoms, ddof=1)
+                cxy = np.cov(gbs_nums, gbs_denoms, ddof=1)[0, 1]
+                var_R = (vx / my**2 - 2 * cxy * mx / my**3 + vy * mx**2 / my**4) / n
+                rse   = np.sqrt(max(var_R, 0)) / abs(mx / my)
+                if rse < eps:
+                    break
+
+    if len(gbs_nums) > 0 and abs(np.mean(gbs_denoms)) > 1e-12:
+        result['gbs'] = float(np.mean(gbs_nums) / np.mean(gbs_denoms))
+    if len(bs_nums) > 0 and abs(np.mean(bs_denoms)) > 1e-12:
+        result['bs'] = float(np.mean(bs_nums) / np.mean(bs_denoms))
+    if ss_vals:
+        result['ss'] = float(np.mean(ss_vals))
+    if cos_sg_vals:
+        result['cos_sg'] = float(np.mean(cos_sg_vals))
+    if gbs_ufull_vals:
+        result['gbs_ufull'] = float(np.mean(gbs_ufull_vals))
+
+    # ================================================================
+    # Phase 2: Expensive loop — GBS_u, cos_su, cos_gu
+    # ~10 HVPs per batch for power iteration; warm-start across batches.
+    # ================================================================
+    gbs_u_vals  = []
+    cos_su_vals = []
+    cos_gu_vals = []
+    v_warm = None
+
+    for i in range(n_expensive):
+        try:
+            with disable_flash_attention():
+                idx = T.randperm(len(X), generator=rng)[:batch_size]
+                loss = loss_fn(net(X[idx]).squeeze(dim=-1), Y[idx])
+
+                gbs_u_val, cos_su, cos_gu, _lam_b, u_b = compute_gbs_u_per_batch(
+                    loss, net, optimizer, v_init=v_warm, n_iter=10)
+                v_warm = u_b  # warm-start for next batch
+
+                if not np.isnan(gbs_u_val):
+                    gbs_u_vals.append(gbs_u_val)
+                if not np.isnan(cos_su):
+                    cos_su_vals.append(cos_su)
+                if not np.isnan(cos_gu):
+                    cos_gu_vals.append(cos_gu)
+        except Exception:
+            continue
+
+    if gbs_u_vals:
+        result['gbs_u'] = float(np.mean(gbs_u_vals))
+    if cos_su_vals:
+        result['cos_su'] = float(np.mean(cos_su_vals))
+    if cos_gu_vals:
+        result['cos_gu'] = float(np.mean(cos_gu_vals))
+
+    # ================================================================
+    # Phase 3: Full-HVP loop — GBS_g
+    # Precompute g_full_graph ONCE; 1 full-dataset HVP per batch.
+    # GBS_g = E_B[ (s_B · ĝ_B) * ĝ_B^T H ĝ_B / (−‖g_B‖) ]
+    # where H is the FULL-batch Hessian.
+    # ================================================================
+    gbs_g_vals = []
+    g_full_flat = None
+    try:
+        with disable_flash_attention():
+            full_preds  = net(X).squeeze(dim=-1)
+            full_loss   = loss_fn(full_preds, Y)
+            g_full_flat = flatt(torch.autograd.grad(full_loss, params, create_graph=True))
+
+            for i in range(n_full):
+                is_last = (i == n_full - 1)
+                try:
+                    idx   = T.randperm(len(X), generator=rng)[:batch_size]
+                    loss_b = loss_fn(net(X[idx]).squeeze(dim=-1), Y[idx])
+                    g_b_list = torch.autograd.grad(
+                        loss_b, params, create_graph=False, retain_graph=False)
+                    g_b_flat = flatt(g_b_list).detach()
+
+                    norm_gb = g_b_flat.norm().item()
+                    if norm_gb < 1e-12:
+                        if is_last and g_full_flat is not None:
+                            # still need to release graph; do a dummy grad
+                            del g_full_flat
+                            g_full_flat = None
+                        continue
+
+                    g_b_hat = g_b_flat / norm_gb   # unit batch-gradient direction
+                    s_flat  = _build_gbs_step(g_b_flat, optimizer)
+
+                    # H ĝ_B using the full-batch graph (H = full Hessian)
+                    Hg_hat = flatt(torch.autograd.grad(
+                        T.dot(g_full_flat, g_b_hat), params,
+                        retain_graph=not is_last)).detach()
+
+                    s_dot_ghat    = T.dot(s_flat,  g_b_hat).item()
+                    ghat_H_ghat   = T.dot(g_b_hat, Hg_hat).item()
+                    gbs_g_val     = s_dot_ghat * ghat_H_ghat / (-norm_gb)
+                    gbs_g_vals.append(gbs_g_val)
+
+                except Exception:
+                    if is_last and g_full_flat is not None:
+                        try:
+                            del g_full_flat
+                            g_full_flat = None
+                        except Exception:
+                            pass
+                    continue
+
+    except Exception:
+        pass
+    finally:
+        if g_full_flat is not None:
+            try:
+                del g_full_flat
+            except Exception:
+                pass
+
+    if gbs_g_vals:
+        result['gbs_g'] = float(np.mean(gbs_g_vals))
+
+    return result
 
 
 ################################################################################
@@ -1666,41 +2038,42 @@ def calculate_gni(net,
         X = X[random_idx]
         Y = Y[random_idx]
 
-    total_loss = loss_fn(net(X).squeeze(dim=-1), Y)
+    with disable_flash_attention():
+        total_loss = loss_fn(net(X).squeeze(dim=-1), Y)
 
-    total_grad = flatt(torch.autograd.grad(total_loss, params, create_graph=True))
+        total_grad = flatt(torch.autograd.grad(total_loss, params, create_graph=True))
 
-    total_grad_detach = total_grad.detach()
+        total_grad_detach = total_grad.detach()
 
-    normalizer = T.dot(total_grad_detach, total_grad_detach).item()
+        normalizer = T.dot(total_grad_detach, total_grad_detach).item()
 
-    gHg_list = []
-
-
-    for i in range(n_estimates):
-        rng = gimme_new_rng()
-
-        shuffle = T.randperm(len(X), generator=rng)
-        random_idx = shuffle[:batch_size]
-
-        X_batch = X[random_idx]
-        Y_batch = Y[random_idx]
+        gHg_list = []
 
 
-        loss = loss_fn(net(X_batch).squeeze(dim=-1), Y_batch)
+        for i in range(n_estimates):
+            rng = gimme_new_rng()
 
-        grads_vector = flatt(torch.autograd.grad(loss, params))
-        step_vector = grads_vector.detach()
+            shuffle = T.randperm(len(X), generator=rng)
+            random_idx = shuffle[:batch_size]
 
-        total_grad_dot_step = T.dot(total_grad, step_vector)
+            X_batch = X[random_idx]
+            Y_batch = Y[random_idx]
 
-        Hg = flatt(torch.autograd.grad(total_grad_dot_step, params, retain_graph=True))
 
-        Hg = Hg.detach()
+            loss = loss_fn(net(X_batch).squeeze(dim=-1), Y_batch)
 
-        gHg = T.dot(step_vector, Hg)
+            grads_vector = flatt(torch.autograd.grad(loss, params))
+            step_vector = grads_vector.detach()
 
-        gHg_list.append(gHg.item())
+            total_grad_dot_step = T.dot(total_grad, step_vector)
+
+            Hg = flatt(torch.autograd.grad(total_grad_dot_step, params, retain_graph=True))
+
+            Hg = Hg.detach()
+
+            gHg = T.dot(step_vector, Hg)
+
+            gHg_list.append(gHg.item())
 
 
     quantity = np.mean(gHg_list) / normalizer
@@ -1838,9 +2211,10 @@ def estimate_hessian_trace(net,
     dtype = first_param.dtype
 
     # Evaluate full-batch loss and build Hessian-vector product closure
-    preds = net(X).squeeze(dim=-1)
-    loss = loss_fn(preds, Y)
-    hessian_matvec = create_hessian_vector_product(loss, net)
+    with disable_flash_attention():
+        preds = net(X).squeeze(dim=-1)
+        loss = loss_fn(preds, Y)
+        hessian_matvec = create_hessian_vector_product(loss, net)
 
     n_params = param_length(net)
 
@@ -1854,7 +2228,8 @@ def estimate_hessian_trace(net,
         probe = torch.randint(0, 2, (n_params,), generator=generator, device='cpu', dtype=torch.float32)
         probe = probe.mul_(2.0).sub_(1.0).to(device=device, dtype=dtype)
 
-        Hz = hessian_matvec(probe)
+        with disable_flash_attention():
+            Hz = hessian_matvec(probe)
         if Hz.dim() != 1 or Hz.numel() != n_params:
             raise RuntimeError("Hessian-vector product returned unexpected shape")
 

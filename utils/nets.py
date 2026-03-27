@@ -2,6 +2,7 @@ import torch as T
 import torch
 import torch.nn as nn
 import timm
+import math
 
 from utils.resnet_new import resnet14, ResNet
 from utils.resnet_bn import resnet10 as resnet10_bn, ResNet as ResNetBN
@@ -103,11 +104,23 @@ def get_model_presets():
             'params': {
                 'img_size': 32,
                 'patch_size': 4,
-                'embed_dim': 192,
-                'depth': 6,
-                'num_heads': 3,
+                'embed_dim': 64,
+                'depth': 2,
+                'num_heads': 2,
                 'mlp_ratio': 4.0,
             }
+        },
+        'gpt_s': {
+            'type': 'gpt',
+            'params': {'d_model': 64, 'n_heads': 4, 'n_layers': 4, 'd_ff': 256, 'seq_len': 128},
+        },
+        'gpt': {
+            'type': 'gpt',
+            'params': {'d_model': 128, 'n_heads': 4, 'n_layers': 6, 'd_ff': 512, 'seq_len': 128},
+        },
+        'gpt_l': {
+            'type': 'gpt',
+            'params': {'d_model': 192, 'n_heads': 6, 'n_layers': 8, 'd_ff': 768, 'seq_len': 128},
         },
     }
     return model_presets
@@ -183,8 +196,82 @@ class SquaredLoss(nn.modules.loss._Loss):
         #     return loss_per_sample
         
         raise ValueError("Unknown reduction type")
-        
 
+
+
+class LanguageCELoss(nn.Module):
+    def forward(self, input, target):
+        # input: (B*T, vocab), target: (B, T) -> (B*T,)
+        return F.cross_entropy(input, target.reshape(-1))
+
+
+class GPTBlock(nn.Module):
+    def __init__(self, d_model, n_heads, d_ff, seq_len, use_layer_norm=False):
+        super().__init__()
+        assert d_model % n_heads == 0
+        self.n_heads = n_heads
+        self.d_head = d_model // n_heads
+        self.d_model = d_model
+
+        # LayerNorm omitted by default for EoS sharpness analysis; pass use_layer_norm=True to restore
+        self.ln1 = nn.LayerNorm(d_model) if use_layer_norm else nn.Identity()
+        self.ln2 = nn.LayerNorm(d_model) if use_layer_norm else nn.Identity()
+        self.qkv_proj = nn.Linear(d_model, 3 * d_model, bias=False)
+        self.out_proj = nn.Linear(d_model, d_model, bias=False)
+
+        self.ff1 = nn.Linear(d_model, d_ff, bias=False)
+        self.ff2 = nn.Linear(d_ff, d_model, bias=False)
+
+        # Causal mask registered as buffer for device safety
+        mask = T.triu(T.ones(seq_len, seq_len), diagonal=1).bool()
+        self.register_buffer('causal_mask', mask)
+
+    def forward(self, x):
+        B, T, C = x.shape
+        # Additive causal mask (NOT is_causal=True, to avoid flash dispatch)
+        qkv = self.qkv_proj(self.ln1(x)).reshape(B, T, 3, self.n_heads, self.d_head)
+        qkv = qkv.permute(2, 0, 3, 1, 4)  # (3, B, n_heads, T, d_head)
+        q, k, v = qkv[0], qkv[1], qkv[2]
+
+        scale = self.d_head ** -0.5
+        attn = (q @ k.transpose(-2, -1)) * scale  # (B, n_heads, T, T)
+        # Additive causal mask (NOT is_causal=True, to avoid flash dispatch)
+        attn = attn.masked_fill(self.causal_mask[:T, :T], float('-inf'))
+        attn = attn.softmax(dim=-1)
+
+        out = (attn @ v).transpose(1, 2).reshape(B, T, C)
+        x = x + self.out_proj(out)
+
+        x = x + self.ff2(F.gelu(self.ff1(self.ln2(x))))
+        return x
+
+
+class GPT(nn.Module):
+    def __init__(self, vocab_size, seq_len, d_model, n_heads, n_layers, d_ff, use_layer_norm=False):
+        super().__init__()
+        # Disable efficient/flash attention so second-order gradients work
+        T.backends.cuda.enable_flash_sdp(False)
+        T.backends.cuda.enable_mem_efficient_sdp(False)
+        self.n_layers = n_layers
+        self.tok_emb = nn.Embedding(vocab_size, d_model)
+        self.pos_emb = nn.Embedding(seq_len, d_model)
+        self.blocks = nn.ModuleList([
+            GPTBlock(d_model, n_heads, d_ff, seq_len, use_layer_norm=use_layer_norm)
+            for _ in range(n_layers)
+        ])
+        # LayerNorm omitted by default for EoS sharpness analysis; pass use_layer_norm=True to restore
+        self.ln_f = nn.LayerNorm(d_model) if use_layer_norm else nn.Identity()
+        self.head = nn.Linear(d_model, vocab_size, bias=False)
+
+    def forward(self, x):
+        # x: (B, S) long
+        B, S = x.shape
+        pos = torch.arange(S, device=x.device).unsqueeze(0)  # (1, S)
+        h = self.tok_emb(x) + self.pos_emb(pos)
+        for block in self.blocks:
+            h = block(h)
+        logits = self.head(self.ln_f(h))  # (B, S, vocab_size)
+        return logits.reshape(B * S, -1)  # (B*S, vocab_size)
 
 
 class MLP(nn.Module):
@@ -261,14 +348,17 @@ class CNN(nn.Module):
 
 class ViT(nn.Module):
     def __init__(self, img_size=32, patch_size=4, embed_dim=192, depth=6,
-                 num_heads=3, mlp_ratio=4.0, num_classes=10):
+                 num_heads=3, mlp_ratio=4.0, num_classes=10, use_layer_norm=False):
         super().__init__()
         # Disable efficient/flash attention so second-order gradients work
         T.backends.cuda.enable_flash_sdp(False)
         T.backends.cuda.enable_mem_efficient_sdp(False)
+        # LayerNorm omitted by default for EoS sharpness analysis; pass use_layer_norm=True to restore
+        norm_layer = nn.LayerNorm if use_layer_norm else nn.Identity
         self.model = timm.create_model(
             'vit_tiny_patch16_224',
             pretrained=False,
+            norm_layer=norm_layer,
             img_size=img_size,
             patch_size=patch_size,
             embed_dim=embed_dim,
@@ -336,6 +426,18 @@ def prepare_net(model_type: str,
             num_heads=params.get('num_heads', 3),
             mlp_ratio=params.get('mlp_ratio', 4.0),
             num_classes=params['output_dim'],
+            use_layer_norm=params.get('use_layer_norm', False),
+        )
+
+    if model_type == 'gpt':
+        net = GPT(
+            vocab_size=params['output_dim'],
+            seq_len=params.get('seq_len', 128),
+            d_model=params['d_model'],
+            n_heads=params['n_heads'],
+            n_layers=params['n_layers'],
+            d_ff=params['d_ff'],
+            use_layer_norm=params.get('use_layer_norm', False),
         )
 
     return net
@@ -439,6 +541,56 @@ def initialize_resnet_bn(net, scale=0.1):
     net.fc.weight.data *= scale
 
 
+def initialize_gpt(net, scale=None, residual_scaling=False):
+    if scale is None:
+        scale = 1.0
+    # scale < 1 reduces initial sharpness to allow progressive sharpening toward EoS.
+    # residual_scaling applies GPT-2 style 1/sqrt(2*n_layers) to residual output projections.
+    std_base = 0.02 * scale
+    std_residual = std_base / math.sqrt(2 * net.n_layers) if residual_scaling else std_base
+    nn.init.normal_(net.tok_emb.weight, std=std_base)
+    nn.init.normal_(net.pos_emb.weight, std=std_base)
+    for block in net.blocks:
+        nn.init.normal_(block.qkv_proj.weight, std=std_base)
+        nn.init.normal_(block.ff1.weight, std=std_base)
+        # Residual output projections (out_proj, ff2) optionally get depth scaling
+        nn.init.normal_(block.out_proj.weight, std=std_residual)
+        nn.init.normal_(block.ff2.weight, std=std_residual)
+    nn.init.normal_(net.head.weight, std=std_base)
+
+
+def initialize_vit(net, scale=1.0, residual_scaling=False):
+    # scale < 1 reduces initial sharpness to allow progressive sharpening toward EoS.
+    # residual_scaling applies GPT-2 style 1/sqrt(2*depth) to residual output projections
+    # (attn.proj and mlp.fc2), keeping signal O(1) through all layers at init.
+    std_base = 0.02 * scale
+    std_residual = std_base / math.sqrt(2 * len(net.model.blocks)) if residual_scaling else std_base
+
+    for m in net.model.modules():
+        if isinstance(m, (nn.Linear, nn.Conv2d)):
+            nn.init.normal_(m.weight, std=std_base)
+            if m.bias is not None:
+                nn.init.zeros_(m.bias)
+
+    if residual_scaling:
+        for block in net.model.blocks:
+            nn.init.normal_(block.attn.proj.weight, std=std_residual)
+            nn.init.normal_(block.mlp.fc2.weight, std=std_residual)
+
+    if hasattr(net.model, 'pos_embed') and net.model.pos_embed is not None:
+        nn.init.normal_(net.model.pos_embed, std=std_base)
+    if hasattr(net.model, 'cls_token') and net.model.cls_token is not None:
+        nn.init.normal_(net.model.cls_token, std=std_base)
+
+
+def freeze_layernorm(net):
+    """Freeze LayerNorm weight/bias (requires_grad=False) so LN normalizes without learning."""
+    for m in net.modules():
+        if isinstance(m, nn.LayerNorm):
+            for p in m.parameters():
+                p.requires_grad = False
+
+
 def initialize_linear(net, scale=None):
     if scale is None:
         scale=1
@@ -473,13 +625,13 @@ def temp_seed(seed):
             T.cuda.set_rng_state(cuda_state)
 
 
-def initialize_net(net, scale=None, seed=None):
+def initialize_net(net, scale=None, seed=None, residual_scaling=False):
 
     with temp_seed(seed):
         if isinstance(net, Linear):
             initialize_linear(net, scale=scale)
         elif isinstance(net, MLP):
-            initialize_mlp(net, scale=scale)    
+            initialize_mlp(net, scale=scale)
         elif isinstance(net, ResNet):
             initialize_resnet(net, scale=scale)
         elif isinstance(net, ResNetBN):
@@ -487,7 +639,9 @@ def initialize_net(net, scale=None, seed=None):
         elif isinstance(net, CNN):
             initialize_cnn(net, scale=scale)
         elif isinstance(net, ViT):
-            pass  # timm initializes weights internally
+            initialize_vit(net, scale=scale if scale is not None else 1.0, residual_scaling=residual_scaling)
+        elif isinstance(net, GPT):
+            initialize_gpt(net, scale=scale, residual_scaling=residual_scaling)
         else:
             raise ValueError("Unknown net type")
 

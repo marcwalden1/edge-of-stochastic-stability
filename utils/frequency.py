@@ -54,6 +54,8 @@ class FrequencyCalculator:
         
         def full_batch_lambda_max_rule(ctx: MeasurementContext) -> bool:
             """Full batch lambda max frequency rule - fixed at every 256 steps."""
+            if getattr(ctx, 'rare_measure', False) and not getattr(ctx, 'precise_plots', False):
+                return ctx.step_number % 512 == 0
             freq = 256
             return ctx.step_number % freq == 0
         
@@ -83,8 +85,8 @@ class FrequencyCalculator:
             if ctx.step_number > 50_000:
                 freq *= 2
 
-            # Rare-measure: make much rarer
-            freq = _rare_scale(ctx, freq, heavy=True)
+            if getattr(ctx, 'rare_measure', False) and not getattr(ctx, 'precise_plots', False):
+                return ctx.step_number % 512 == 0
 
             return ctx.step_number % freq == 0
         
@@ -116,11 +118,9 @@ class FrequencyCalculator:
         
         def batch_sharpness_rule(ctx: MeasurementContext) -> bool:
             """Batch sharpness frequency rule (expected Rayleigh quotient)."""
-            freq = 256
-
-            # Preferred batch sharpness; light sparsification only
-            freq = _rare_scale(ctx, freq, heavy=False)
-            return ctx.step_number % freq == 0
+            if getattr(ctx, 'rare_measure', False) and not getattr(ctx, 'precise_plots', False):
+                return ctx.step_number % 512 == 0
+            return ctx.step_number % 256 == 0
         
         
         def step_sharpness_rule(ctx: MeasurementContext) -> bool:
@@ -349,8 +349,9 @@ class FrequencyCalculator:
 
         def preconditioned_lambda_max_rule(ctx: MeasurementContext) -> bool:
             """Preconditioned lambda_max(P^{-1}H) frequency rule — same cadence as full-batch lambda max."""
-            freq = 256
-            return ctx.step_number % freq == 0
+            if getattr(ctx, 'rare_measure', False) and not getattr(ctx, 'precise_plots', False):
+                return ctx.step_number % 512 == 0
+            return ctx.step_number % 256 == 0
 
         def trajectory_tracking_rule(ctx: MeasurementContext) -> bool:
             """Trajectory tracking cadence.

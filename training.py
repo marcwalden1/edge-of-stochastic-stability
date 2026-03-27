@@ -14,7 +14,7 @@ import argparse
 import time
 
 from utils.data import prepare_dataset, get_dataset_presets
-from utils.nets import SquaredLoss, MLP, CNN, prepare_net, initialize_net, prepare_optimizer, get_model_presets
+from utils.nets import SquaredLoss, LanguageCELoss, MLP, CNN, prepare_net, initialize_net, prepare_optimizer, get_model_presets
 from utils.nets import ResNet
 from utils.storage import initialize_folders
 from utils.wandb_utils import (
@@ -125,6 +125,16 @@ class MeasurementRunner:
         else:
             self.eigenvalues_file = None
 
+        # GBS suite CSV
+        if 'gbs_suite' in measurements:
+            gbs_suite_path = save_dir / 'gbs_suite.csv'
+            self.gbs_suite_file = open(gbs_suite_path, 'w', buffering=1)
+            self.gbs_suite_file.write(
+                'step,gbs,gbs_u,gbs_ufull,gbs_g,ss,bs,cos_sg,cos_su,cos_gu\n'
+            )
+        else:
+            self.gbs_suite_file = None
+
         # Test set prediction snapshots for distance comparison
         self.X_test = X_test
         self.Y_test = Y_test
@@ -136,6 +146,11 @@ class MeasurementRunner:
         if self.eigenvalues_file is not None:
             self.eigenvalues_file.write('\n]')
             self.eigenvalues_file.close()
+
+        if self.gbs_suite_file is not None:
+            self.gbs_suite_file.flush()
+            self.gbs_suite_file.close()
+            self.gbs_suite_file = None
 
         # Save test prediction snapshots
         if self.test_predictions_log and self.test_predictions_path is not None:
@@ -232,9 +247,10 @@ class MeasurementRunner:
         if 'step_sharpness' in self.measurements:
             if frequency_calculator.should_measure('step_sharpness', ctx):
                 self.net.zero_grad()
-                preds = self.net(X_batch).squeeze(dim=-1)
-                loss = self.loss_fn(preds, Y_batch)
-                metrics['step_sharpness'] = compute_grad_H_grad(loss, self.net).item()
+                with disable_flash_attention():
+                    preds = self.net(X_batch).squeeze(dim=-1)
+                    loss = self.loss_fn(preds, Y_batch)
+                    metrics['step_sharpness'] = compute_grad_H_grad(loss, self.net).item()
 
         # ----- Generalized Batch Sharpness (GBS) -----
         if 'gbs' in self.measurements:
@@ -243,6 +259,39 @@ class MeasurementRunner:
                     self.net, self.X, self.Y, self.loss_fn, optimizer,
                     batch_size=self.batch_size, n_estimates=1000, min_estimates=20, eps=0.005,
                 )
+
+        # ----- GBS Suite (extended sharpness/alignment metrics) -----
+        if 'gbs_suite' in self.measurements:
+            if self._in_final_phase(step_number) and frequency_calculator.should_measure('gbs_suite', ctx):
+                full_eigenvec = (
+                    self.eigenvector_cache.eigenvectors[0]
+                    if self.eigenvector_cache and self.eigenvector_cache.eigenvectors
+                    else None
+                )
+                full_lmax = (
+                    self.eigenvector_cache.eigenvalues[0]
+                    if self.eigenvector_cache and self.eigenvector_cache.eigenvalues
+                    else None
+                )
+                suite = calculate_gbs_suite(
+                    self.net, self.X, self.Y, self.loss_fn, optimizer,
+                    batch_size=self.batch_size,
+                    full_eigenvec=full_eigenvec,
+                    full_lmax=full_lmax,
+                )
+                if self.gbs_suite_file is not None:
+                    self.gbs_suite_file.write(
+                        f"{step_number},"
+                        f"{suite['gbs']},"
+                        f"{suite['gbs_u']},"
+                        f"{suite['gbs_ufull']},"
+                        f"{suite['gbs_g']},"
+                        f"{suite['ss']},"
+                        f"{suite['bs']},"
+                        f"{suite['cos_sg']},"
+                        f"{suite['cos_su']},"
+                        f"{suite['cos_gu']}\n"
+                    )
 
         # ----- Eigenvalues/Lambda max (full batch) -----
         lmax_now = False
@@ -275,8 +324,9 @@ class MeasurementRunner:
                 X_subset = self.X
                 Y_subset = self.Y
 
-            preds = self.net(X_subset).squeeze(dim=-1)
-            loss = self.loss_fn(preds, Y_subset)
+            with disable_flash_attention():
+                preds = self.net(X_subset).squeeze(dim=-1)
+                loss = self.loss_fn(preds, Y_subset)
 
             if self.eigenvector_cache is not None:
                 max_iterations = 100 if not self.use_power_iteration else 1000
@@ -337,7 +387,8 @@ class MeasurementRunner:
 
             metrics['lmax'] = lmax_value.item()
             metrics['full_loss'] = loss.item()
-            metrics['full_accuracy'] = calculate_accuracy(preds, Y_subset)
+            Y_for_acc = Y_subset.reshape(-1) if preds.shape[0] != Y_subset.shape[0] else Y_subset
+            metrics['full_accuracy'] = calculate_accuracy(preds, Y_for_acc)
 
             epoch_loss_update = metrics['full_loss']
 
@@ -376,8 +427,9 @@ class MeasurementRunner:
                     X_sub = self.X
                     Y_sub = self.Y
 
-                preds_pc = self.net(X_sub).squeeze(dim=-1)
-                loss_pc = self.loss_fn(preds_pc, Y_sub)
+                with disable_flash_attention():
+                    preds_pc = self.net(X_sub).squeeze(dim=-1)
+                    loss_pc = self.loss_fn(preds_pc, Y_sub)
 
                 p_diag = get_preconditioner_diag(optimizer)
                 if p_diag is not None:
@@ -537,8 +589,9 @@ class MeasurementRunner:
 
         if batch_lmax_now:
             optimizer.zero_grad()
-            preds = self.net(X_batch).squeeze(dim=-1)
-            loss = self.loss_fn(preds, Y_batch)
+            with disable_flash_attention():
+                preds = self.net(X_batch).squeeze(dim=-1)
+                loss = self.loss_fn(preds, Y_batch)
             batch_lmax = compute_eigenvalues(loss, self.net, k=1, max_iterations=50, reltol=1e-3)
             metrics['batch_lmax'] = batch_lmax.item()
             print(
@@ -1273,7 +1326,7 @@ if __name__ == '__main__':
     parser.add_argument('--lr', type=float, default=0.001, help='Learning rate for training')
     parser.add_argument('--stop-loss', '--stop_loss', type=float, default=None, help='Stop training if loss goes below this value')
     # --- Loss Configuration ---
-    parser.add_argument('--loss', type=str, default='mse', choices=['mse', 'ce'], help='Loss function to use (mse or ce)')
+    parser.add_argument('--loss', type=str, default='mse', choices=['mse', 'ce', 'lm'], help='Loss function to use (mse, ce, or lm)')
 
     # --- Dataset Configuration ---
     parser.add_argument('--dataset', type=str, default='cifar10', help='Dataset to use for training')
@@ -1285,6 +1338,9 @@ if __name__ == '__main__':
     parser.add_argument('--activation', type=str, default='relu', choices=['relu','silu'], help='Activation function to use in MLP/CNN (relu or silu)')
     parser.add_argument('--init-scale', '--init_scale', type=float, default=0.2, help='Initialization scale for network weights')
     parser.add_argument('--no-init', '--no_init', action='store_true', help='If set, do not initialize network weights')
+    parser.add_argument('--layernorm', action='store_true', help='Enable LayerNorm in transformer models (default: off for EoS analysis)')
+    parser.add_argument('--residual-scaling', '--residual_scaling', action='store_true', help='Scale residual output projections by 1/sqrt(2*depth) at init (GPT-2 style)')
+    parser.add_argument('--frozen-layernorm', '--frozen_layernorm', action='store_true', help='Enable LayerNorm but freeze weight/bias (no learnable scale invariance)')
 
     # --- wandb Continuation Options ---
     parser.add_argument('--cont-run-id', '--cont_run_id', type=str, default=None, help='Wandb run ID to continue training from')
@@ -1326,6 +1382,10 @@ if __name__ == '__main__':
     parser.add_argument('--GBS', '--gbs', action='store_true', dest='gbs',
                         help='Compute Generalized Batch Sharpness GBS = E[s^T H s] / (-E[s^T g]). '
                              'Stabilizes at ~2 at the edge of stability for any optimizer.')
+    parser.add_argument('--gbs-suite', action='store_true', dest='gbs_suite',
+                        help='Compute the full GBS measurement suite (gbs, gbs_u, gbs_ufull, gbs_g, '
+                             'ss, bs, cos_sg, cos_su, cos_gu). Written to gbs_suite.csv. '
+                             'Pass --lambdamax to enable GBS_ufull (uses cached full eigenvector).')
     parser.add_argument('--gni', action='store_true', help='If set, compute the Gradient-Noise Interaction quantity.')
     parser.add_argument('--cosine-similarity', action='store_true',
                         help='Track cosine similarity between consecutive gradients and gradient-momentum')
@@ -1560,6 +1620,7 @@ if __name__ == '__main__':
     ('adaptive_batch_sharpness_momentum', args.adaptive_batch_sharpness_momentum),
     ('lmax_preconditioned', args.lambdamaxpreconditioned),
     ('gbs', args.gbs),
+    ('gbs_suite', args.gbs_suite),
     ('trajectory_tracking', args.track_trajectory),
     ('test_predictions', args.measure_test_distance),
     ] if enabled}
@@ -1574,6 +1635,8 @@ if __name__ == '__main__':
         loss_fn = SquaredLoss()
     elif args.loss == 'ce':
         loss_fn = nn.CrossEntropyLoss()
+    elif args.loss == 'lm':
+        loss_fn = LanguageCELoss()
 
     # ----- Dataset and Model Presets -----
     dataset_presets = get_dataset_presets()
@@ -1590,6 +1653,7 @@ if __name__ == '__main__':
     # Pass activation choice into network params if supported
     if name in ('mlp','cnn'):
         params['activation'] = args.activation
+    params['use_layer_norm'] = args.layernorm or args.frozen_layernorm
     net = prepare_net(
         model_type=model_presets[name]['type'], 
         params=params
@@ -1597,7 +1661,10 @@ if __name__ == '__main__':
 
     # --- Model Initialization ---
     if not args.no_init:
-        initialize_net(net, scale=args.init_scale, seed=args.init_seed)
+        initialize_net(net, scale=args.init_scale, seed=args.init_seed, residual_scaling=args.residual_scaling)
+        if args.frozen_layernorm:
+            from utils.nets import freeze_layernorm
+            freeze_layernorm(net)
 
     # ----- Checkpoint Continuation Handling -----
     wandb_checkpoint_loaded = False

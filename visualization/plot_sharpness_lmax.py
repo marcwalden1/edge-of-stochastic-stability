@@ -55,6 +55,7 @@ class RunInfo:
     batch_size: int
     lr: float
     optimizer: str = "SGD"
+    momentum: float = 0.0
 
 
 def require_env_path(name: str) -> Path:
@@ -69,6 +70,25 @@ def iter_run_folders(results_root: Path) -> Iterable[Path]:
         if not dataset_folder.is_dir():
             continue
         yield from (child for child in dataset_folder.iterdir() if child.is_dir())
+
+
+def parse_momentum_from_header(folder: Path) -> float:
+    """Parse momentum (beta) from the Namespace line in results.txt header."""
+    results_file = folder / 'results.txt'
+    try:
+        import re
+        with open(results_file) as f:
+            for line in f:
+                if not line.startswith('#'):
+                    break
+                if '# Arguments: Namespace(' not in line:
+                    continue
+                m = re.search(r'momentum=([^,)]+)', line)
+                if m and m.group(1).strip() not in ('None', 'none'):
+                    return float(m.group(1).strip())
+    except Exception:
+        pass
+    return 0.0
 
 
 def parse_optimizer_from_header(folder: Path) -> str:
@@ -111,7 +131,8 @@ def parse_run_info(folder: Path) -> RunInfo:
     except (StopIteration, ValueError) as exc:
         raise ResultsConfigError(f"Unrecognised folder naming scheme: {folder.name}") from exc
     optimizer = parse_optimizer_from_header(folder)
-    return RunInfo(folder=folder, batch_size=batch_size, lr=lr, optimizer=optimizer)
+    momentum = parse_momentum_from_header(folder)
+    return RunInfo(folder=folder, batch_size=batch_size, lr=lr, optimizer=optimizer, momentum=momentum)
 
 
 def latest_run(results_root: Path) -> RunInfo:
@@ -146,7 +167,9 @@ def plot_metrics(df: pd.DataFrame, run: RunInfo,
                  exclude_lmax: bool = False,
                  exclude_lmaxpreconditioned: bool = False,
                  exclude_abs: bool = False,
-                 exclude_absm: bool = False) -> plt.Figure:
+                 exclude_absm: bool = False,
+                 lbound: bool = False,
+                 hbound: bool = False) -> plt.Figure:
     """Plot batch sharpness and lambda_max vs training steps.
 
     Top subplot:    batch sharpness, lambda_max, loss (always shown).
@@ -196,9 +219,21 @@ def plot_metrics(df: pd.DataFrame, run: RunInfo,
 
     ax_top.set_ylabel('sharpness')
     two_over_eta = 2 / run.lr
+    beta = run.momentum
+    lbound_val = 2 * (1 - beta) / run.lr
+    hbound_val = 2 * (1 + beta) / run.lr
+    if lbound:
+        ax_top.axhline(y=lbound_val, color='red', linestyle='--', linewidth=1.5,
+                       label=f'2(1−β)/η = {lbound_val:.0f}')
+    if hbound:
+        ax_top.axhline(y=hbound_val, color='orange', linestyle='--', linewidth=1.5,
+                       label=f'2(1+β)/η = {hbound_val:.0f}')
+    title_suffix = ''
+    if beta:
+        title_suffix = f', β={beta}'
     ax_top.set_title(
         f'{run.optimizer} — Batch Sharpness & λ_max '
-        f'(batch={run.batch_size}, lr={run.lr}, 2/η={two_over_eta:.1f})'
+        f'(batch={run.batch_size}, lr={run.lr}, 2/η={two_over_eta:.1f}{title_suffix})'
     )
     ax_top.legend(loc='upper left')
     ax_top.grid(True, alpha=0.3)
@@ -311,6 +346,10 @@ def main() -> None:
                         help="Do not plot adaptive batch sharpness")
     parser.add_argument("--exclude-ABSM", action="store_true", dest="exclude_absm",
                         help="Do not plot adaptive batch sharpness momentum")
+    parser.add_argument("--lbound", action="store_true",
+                        help="Plot horizontal line at 2(1-β)/η (small-batch EoS boundary)")
+    parser.add_argument("--hbound", action="store_true",
+                        help="Plot horizontal line at 2(1+β)/η (large-batch EoS boundary)")
     args = parser.parse_args()
 
     plot_kw = dict(
@@ -322,6 +361,8 @@ def main() -> None:
         exclude_lmaxpreconditioned=args.exclude_lmaxpreconditioned,
         exclude_abs=args.exclude_abs,
         exclude_absm=args.exclude_absm,
+        lbound=args.lbound,
+        hbound=args.hbound,
     )
 
     if args.run:
