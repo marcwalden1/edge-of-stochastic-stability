@@ -122,6 +122,17 @@ def get_model_presets():
             'type': 'gpt',
             'params': {'d_model': 192, 'n_heads': 6, 'n_layers': 8, 'd_ff': 768, 'seq_len': 128},
         },
+        'sst_transformer': {
+            'type': 'sst_transformer',
+            'params': {
+                'vocab_size': 33278,
+                'seq_len': 64,
+                'd_model': 64,
+                'n_heads': 2,
+                'n_layers': 2,
+                'n_classes': 1,
+            }
+        },
     }
     return model_presets
 
@@ -203,6 +214,75 @@ class LanguageCELoss(nn.Module):
     def forward(self, input, target):
         # input: (B*T, vocab), target: (B, T) -> (B*T,)
         return F.cross_entropy(input, target.reshape(-1))
+
+
+class LogisticLoss(nn.Module):
+    """Binary logistic loss for {-1, +1} labels.
+
+    Replicates Damian et al. (arXiv:2209.15594) SST-2 criterion:
+        L = mean(-log_sigmoid(output * label))
+    where output is (B, 1) and label is (B,) float {-1, +1}.
+    """
+    def forward(self, input, target):
+        # input: (B, 1) or (B,), target: (B,) float {-1, +1}
+        return -F.logsigmoid(input.squeeze(-1) * target).mean()
+
+
+class SSTTransformerBlock(nn.Module):
+    """Bidirectional (encoder-style) transformer block with post-norm.
+
+    Matches Damian et al. (arXiv:2209.15594) models/transformer.py exactly:
+      x = LayerNorm(x + MultiHeadAttn(x))          # full attention, no causal mask
+      x = LayerNorm(x + Linear(GELU(Linear(x))))   # FF with no hidden expansion
+    """
+    def __init__(self, d_model, n_heads):
+        super().__init__()
+        # Disable flash/efficient attention so second-order gradients work
+        T.backends.cuda.enable_flash_sdp(False)
+        T.backends.cuda.enable_mem_efficient_sdp(False)
+        self.attn = nn.MultiheadAttention(d_model, n_heads, batch_first=True, bias=False)
+        self.ln1 = nn.LayerNorm(d_model)
+        self.ff1 = nn.Linear(d_model, d_model, bias=False)
+        self.ff2 = nn.Linear(d_model, d_model, bias=False)
+        self.ln2 = nn.LayerNorm(d_model)
+
+    def forward(self, x):
+        # Full bidirectional attention — no causal mask
+        attn_out, _ = self.attn(x, x, x, need_weights=False)
+        x = self.ln1(x + attn_out)
+        x = self.ln2(x + self.ff2(F.gelu(self.ff1(x))))
+        return x
+
+
+class SSTTransformer(nn.Module):
+    """Small bidirectional transformer classifier for SST-2.
+
+    Replicates Damian et al. (arXiv:2209.15594) models/transformer.py exactly:
+      - vocab_size=33278 (bert-base-uncased), d_model=64, n_heads=2, n_layers=2, seq_len=64
+      - Token + positional embeddings (both learned)
+      - n_layers SSTTransformerBlocks (bidirectional, post-norm)
+      - Mean pool over sequence -> linear head (zero-initialized weight)
+    Intended for use with LogisticLoss and {-1, +1} labels.
+    """
+    def __init__(self, vocab_size=33278, seq_len=64, d_model=64, n_heads=2, n_layers=2, n_classes=1):
+        super().__init__()
+        self.tok_emb = nn.Embedding(vocab_size, d_model)
+        self.pos_emb = nn.Embedding(seq_len, d_model)
+        self.blocks = nn.ModuleList([SSTTransformerBlock(d_model, n_heads) for _ in range(n_layers)])
+        self.head = nn.Linear(d_model, n_classes, bias=True)
+        # Zero-initialize head weight and bias (matches Damian's kernel_init=zeros)
+        nn.init.zeros_(self.head.weight)
+        nn.init.zeros_(self.head.bias)
+
+    def forward(self, x):
+        # x: (B, S) long
+        B, S = x.shape
+        pos = torch.arange(S, device=x.device).unsqueeze(0)  # (1, S)
+        h = self.tok_emb(x) + self.pos_emb(pos)
+        for block in self.blocks:
+            h = block(h)
+        h = h.mean(dim=1)  # mean pool over sequence
+        return self.head(h)  # (B, n_classes)
 
 
 class GPTBlock(nn.Module):
@@ -440,6 +520,16 @@ def prepare_net(model_type: str,
             use_layer_norm=params.get('use_layer_norm', False),
         )
 
+    if model_type == 'sst_transformer':
+        net = SSTTransformer(
+            vocab_size=params.get('vocab_size', 33278),
+            seq_len=params.get('seq_len', 64),
+            d_model=params.get('d_model', 64),
+            n_heads=params.get('n_heads', 2),
+            n_layers=params.get('n_layers', 2),
+            n_classes=params.get('n_classes', 1),
+        )
+
     return net
 
 def prepare_net_dataset_specific(model_name: str,
@@ -642,6 +732,11 @@ def initialize_net(net, scale=None, seed=None, residual_scaling=False):
             initialize_vit(net, scale=scale if scale is not None else 1.0, residual_scaling=residual_scaling)
         elif isinstance(net, GPT):
             initialize_gpt(net, scale=scale, residual_scaling=residual_scaling)
+        elif isinstance(net, SSTTransformer):
+            # Use default PyTorch init for embeddings/attention/FF layers.
+            # Head is already zero-initialized in SSTTransformer.__init__,
+            # matching Damian et al. (arXiv:2209.15594) kernel_init=zeros.
+            pass
         else:
             raise ValueError("Unknown net type")
 

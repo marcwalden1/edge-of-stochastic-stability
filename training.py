@@ -14,7 +14,7 @@ import argparse
 import time
 
 from utils.data import prepare_dataset, get_dataset_presets
-from utils.nets import SquaredLoss, LanguageCELoss, MLP, CNN, prepare_net, initialize_net, prepare_optimizer, get_model_presets
+from utils.nets import SquaredLoss, LanguageCELoss, LogisticLoss, MLP, CNN, prepare_net, initialize_net, prepare_optimizer, get_model_presets
 from utils.nets import ResNet
 from utils.storage import initialize_folders
 from utils.wandb_utils import (
@@ -1326,7 +1326,7 @@ if __name__ == '__main__':
     parser.add_argument('--lr', type=float, default=0.001, help='Learning rate for training')
     parser.add_argument('--stop-loss', '--stop_loss', type=float, default=None, help='Stop training if loss goes below this value')
     # --- Loss Configuration ---
-    parser.add_argument('--loss', type=str, default='mse', choices=['mse', 'ce', 'lm'], help='Loss function to use (mse, ce, or lm)')
+    parser.add_argument('--loss', type=str, default='mse', choices=['mse', 'ce', 'lm', 'logistic'], help='Loss function to use (mse, ce, lm, or logistic)')
 
     # --- Dataset Configuration ---
     parser.add_argument('--dataset', type=str, default='cifar10', help='Dataset to use for training')
@@ -1637,6 +1637,8 @@ if __name__ == '__main__':
         loss_fn = nn.CrossEntropyLoss()
     elif args.loss == 'lm':
         loss_fn = LanguageCELoss()
+    elif args.loss == 'logistic':
+        loss_fn = LogisticLoss()
 
     # ----- Dataset and Model Presets -----
     dataset_presets = get_dataset_presets()

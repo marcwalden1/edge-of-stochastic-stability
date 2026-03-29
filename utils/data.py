@@ -46,6 +46,10 @@ def get_dataset_presets():
                 'input_dim': 128,
                 'output_dim': 65,
             },
+            'sst2': {
+                'input_dim': 64,
+                'output_dim': 1,
+            },
 
         }
 
@@ -482,6 +486,35 @@ def prepare_shakespeare(dataset_folder: Path, num_data: int, seq_len: int = 128,
     return X_train, Y_train, X_test, Y_test
 
 
+def prepare_sst2(dataset_folder: Path, num_data: int, seq_len: int = 64, dataset_seed: int = 0):
+    """Load SST-2 from HuggingFace, replicating Damian et al. (arXiv:2209.15594) exactly.
+
+    Returns n=num_data class-balanced samples (num_data//2 negative, num_data//2 positive),
+    tokenized with bert-base-uncased, padded/truncated to seq_len=64.
+    Labels are float32 {-1, +1}. No test split (matches Damian).
+    """
+    import os
+    os.environ["TOKENIZERS_PARALLELISM"] = "False"
+    from datasets import load_dataset
+    from transformers import AutoTokenizer
+
+    tokenizer = AutoTokenizer.from_pretrained("bert-base-uncased")
+    dataset = load_dataset("glue", "sst2")
+    y = np.array(dataset["train"]["label"])
+    n_per_class = num_data // 2
+    neg_idx = np.argwhere(y == 0)[:n_per_class, 0]
+    pos_idx = np.argwhere(y == 1)[:n_per_class, 0]
+    idx = np.concatenate([neg_idx, pos_idx])
+    labels = 2 * y[idx] - 1  # {0,1} -> {-1,+1}
+    sentences = [dataset["train"][int(i)]["sentence"] for i in idx]
+    input_ids = tokenizer(
+        sentences, padding='max_length', truncation=True, max_length=seq_len
+    )["input_ids"]
+    X = torch.tensor(input_ids, dtype=torch.long)
+    Y = torch.tensor(labels, dtype=torch.float32)
+    return X, Y, None, None
+
+
 def prepare_dataset(dataset: str, dataset_folder: Union[str, Path], num_data: int, classes: list, dataset_seed: int = 888,
                     loss_type: str = 'mse'
                     ):
@@ -503,4 +536,6 @@ def prepare_dataset(dataset: str, dataset_folder: Union[str, Path], num_data: in
         return prepare_imagenet32(dataset_folder, num_data, dataset_seed=dataset_seed, loss_type=loss_type)
     if dataset == 'shakespeare':
         return prepare_shakespeare(dataset_folder, num_data, seq_len=128, dataset_seed=dataset_seed)
+    if dataset == 'sst2':
+        return prepare_sst2(dataset_folder, num_data, seq_len=64, dataset_seed=dataset_seed)
 
