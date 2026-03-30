@@ -127,10 +127,9 @@ def param_vector(net, clone=True):
 
 def param_length(net):
     '''
-    Returns the number of parameters in the network
+    Returns the number of trainable parameters in the network
     '''
-    params = list(net.parameters())
-    return sum([p.numel() for p in params])
+    return sum(p.numel() for p in net.parameters() if p.requires_grad)
 
 def flatt(vectors):
     '''
@@ -436,7 +435,7 @@ def jvp(net, X, Y, loss_fn, vector):
     Returns:
         Tensor: The JVP of the loss with respect to the network parameters
     """
-    params = list(net.parameters())
+    params = [p for p in net.parameters() if p.requires_grad]
     y_pred = net(X).squeeze(dim=-1)
     loss = loss_fn(y_pred, Y, sampling_vector=vector)
     
@@ -550,10 +549,10 @@ def create_hessian_vector_product(loss, net):
     Returns:
         callable: A function that takes a vector v and returns H @ v
     """
-    params = list(net.parameters())
+    params = [p for p in net.parameters() if p.requires_grad]
     grads = torch.autograd.grad(loss, params, create_graph=True)
     grads_vector = flatt(grads)
-    
+
     def hessian_vector_product(v):
         """
         Compute Hessian-vector product H @ v.
@@ -782,7 +781,7 @@ def compute_lambdamax_power_iteration(loss, net, max_iterations, reltol, init_ve
     device = next(net.parameters()).device
 
     # compute gradient and keep it
-    params = list(net.parameters())
+    params = [p for p in net.parameters() if p.requires_grad]
     grads = torch.autograd.grad(loss, params, create_graph=True)
     grads_vector = flatt(grads)
 
@@ -920,8 +919,9 @@ def compute_grad_H_grad(loss, net, grad_already_there: bool = False,
     
     device = next(net.parameters()).device
 
-    # compute gradient and keep it
-    params = list(net.parameters())
+    # compute gradient and keep it — only over trainable params (requires_grad=True)
+    # so that frozen layers (e.g. tok_emb in SSTTransformer) are excluded from gHg/g²
+    params = [p for p in net.parameters() if p.requires_grad]
     if not grad_already_there:
         grads = torch.autograd.grad(loss, params, create_graph=True)
     else:
@@ -929,7 +929,6 @@ def compute_grad_H_grad(loss, net, grad_already_there: bool = False,
     grads_vector = flatt(grads)
 
     # compute Hessian vector product
-    # grads_vector = T.cat([g.flatten() for g in grads])
     step_vector = grads_vector.detach()
     grad_step = T.dot(grads_vector, step_vector)
     Hv = T.autograd.grad(grad_step, params, retain_graph=False)
@@ -955,7 +954,7 @@ def compute_adaptive_grad_H_grad(loss, net, preconditioner_inv):
     Returns:
         Tuple[Tensor, Tensor]: (u^T H u, g^T u) as scalar tensors.
     """
-    params = list(net.parameters())
+    params = [p for p in net.parameters() if p.requires_grad]
     grads = torch.autograd.grad(loss, params, create_graph=True)
     g_flat = flatt(grads)
 
@@ -993,7 +992,7 @@ def compute_adaptive_grad_H_grad_momentum(loss, net, preconditioner_inv, momentu
     Returns:
         Tuple[Tensor, Tensor]: (s^T H s, g^T s) as scalar tensors.
     """
-    params = list(net.parameters())
+    params = [p for p in net.parameters() if p.requires_grad]
     grads = torch.autograd.grad(loss, params, create_graph=True)
     g_flat = flatt(grads)
 
@@ -1579,7 +1578,7 @@ def compute_gbs_per_batch(loss, net, optimizer):
     Returns:
         Tuple[Tensor, Tensor]: (s_B^T H_B s_B,  s_B^T g_B) as scalar tensors.
     """
-    params = list(net.parameters())
+    params = [p for p in net.parameters() if p.requires_grad]
     grads = torch.autograd.grad(loss, params, create_graph=True)
     g_flat = flatt(grads)               # has graph
     g_det  = g_flat.detach()            # no graph
@@ -1717,7 +1716,7 @@ def compute_gbs_extended_per_batch(loss, net, optimizer):
             gg   = ‖g_B‖²
             ss   = ‖s_B‖²
     """
-    params = list(net.parameters())
+    params = [p for p in net.parameters() if p.requires_grad]
     grads = torch.autograd.grad(loss, params, create_graph=True)
     g_flat = flatt(grads)       # has graph
     g_det = g_flat.detach()     # no graph
@@ -1757,7 +1756,7 @@ def compute_gbs_u_per_batch(loss, net, optimizer, v_init=None, n_iter=10):
     Returns:
         Tuple: (gbs_u_val, cos_su, cos_gu, lam_b, u_b)
     """
-    params = list(net.parameters())
+    params = [p for p in net.parameters() if p.requires_grad]
     grads = torch.autograd.grad(loss, params, create_graph=True)
     g_flat = flatt(grads)       # has graph
     g_det = g_flat.detach()
@@ -1816,7 +1815,7 @@ def calculate_gbs_suite(net, X, Y, loss_fn, optimizer, batch_size,
         return result
 
     rng = gimme_new_rng()
-    params = list(net.parameters())
+    params = [p for p in net.parameters() if p.requires_grad]
     device = next(iter(params)).device
 
     # Precompute full eigenvec on the model's device
@@ -2027,7 +2026,7 @@ def calculate_gni(net,
                               ): 
     sharpnesses = []
 
-    params = list(net.parameters())
+    params = [p for p in net.parameters() if p.requires_grad]
 
 
     if use_subset_of_data is not None:
@@ -2294,7 +2293,7 @@ def calculate_gradient_norm_squared_mc(net,
     rng = torch.Generator()
     rng.manual_seed(entropy_seed)
     
-    params = list(net.parameters())
+    params = [p for p in net.parameters() if p.requires_grad]
     
     for i in range(n_estimates):
         # Sample random mini-batch
@@ -2604,7 +2603,7 @@ def calculate_expected_one_step_batch_loss_change(net,
 def calculate_all_net_grads(net, X):
 
     gradients = []
-    params = list(net.parameters())
+    params = [p for p in net.parameters() if p.requires_grad]
 
     for x in X:
         y = net(x.unsqueeze(0))
@@ -2620,7 +2619,7 @@ def calculate_all_net_grads(net, X):
 
 
 def create_ntk(net, X):
-    params = list(net.parameters())
+    params = [p for p in net.parameters() if p.requires_grad]
 
     gradients = []
 

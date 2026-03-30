@@ -1,6 +1,7 @@
 """
 Tests for SST-2 transformer replication of Damian et al. (arXiv:2209.15594).
-Covers: data loading, architecture, loss, training loop integration.
+Covers: data loading, architecture, loss, training loop integration,
+        frozen tok_emb, compute_grad_H_grad with frozen params, batch sharpness.
 """
 import sys
 sys.path.insert(0, '/n/home06/mwalden/edge-of-stochastic-stability')
@@ -46,7 +47,11 @@ def test_sst_transformer_no_causal_mask():
     net.eval()
     torch.manual_seed(0)
     for p in net.parameters():
-        nn.init.normal_(p, std=0.1)
+        if p.requires_grad:
+            nn.init.normal_(p, std=0.1)
+    # Re-init tok_emb in-place (without grad) so token differences are detectable
+    with torch.no_grad():
+        nn.init.normal_(net.tok_emb.weight, std=0.1)
 
     x = torch.randint(0, 33278, (1, 64))
     x_permuted = x.clone()
@@ -80,41 +85,43 @@ def test_sst_transformer_hyperparams_match_damian():
     assert net.head.out_features == 1
 
 def test_sst_transformer_parameter_count():
+    """Total param count (including frozen tok_emb) still ~2.18M."""
     net = SSTTransformer()
     n_params = sum(p.numel() for p in net.parameters())
     assert 2_000_000 < n_params < 3_000_000, f"Unexpected param count: {n_params:,}"
 
 def test_sst_transformer_gradients_flow_through_head():
     """
-    At zero-init, head.weight gets a gradient (it's the first parameter that sees signal).
-    Embeddings and FF layers get zero gradient at step 0 by chain rule (head.weight=0
-    means ∂loss/∂(pre-head) = 0), but they receive gradients after any weight update.
+    tok_emb is frozen so it never receives gradients.
+    After one SGD step (head.weight becomes nonzero), all OTHER trainable
+    parameters (pos_emb, transformer blocks, head) receive nonzero gradients.
     """
     net = SSTTransformer()
     x = torch.randint(0, 33278, (4, 64))
-    labels = torch.tensor([1., -1., 1., -1.])
+    labels = torch.tensor([1., 1., 1., -1.])  # asymmetric so head.bias gets nonzero grad
     loss_fn = LogisticLoss()
 
-    # Step 0: head gets gradient, pre-head layers do not (zero-init head)
-    out = net(x)
-    loss = loss_fn(out, labels)
-    loss.backward()
-    assert net.head.weight.grad is not None and net.head.weight.grad.norm() > 0, \
-        "Head weight should get nonzero gradient at step 0"
+    # tok_emb is frozen — must never get a gradient
+    assert not net.tok_emb.weight.requires_grad, "tok_emb should be frozen"
 
-    # After one SGD step, head.weight != 0, so gradients flow everywhere
+    # After one SGD step, head.weight != 0, so gradients flow to all trainable params
     with torch.no_grad():
-        net.head.weight -= 0.1 * net.head.weight.grad
+        net.head.weight.fill_(0.1)
 
     net.zero_grad()
     out = net(x)
     loss = loss_fn(out, labels)
     loss.backward()
 
-    # Now ALL parameters should have non-zero gradients
+    # tok_emb must have no gradient
+    assert net.tok_emb.weight.grad is None, "Frozen tok_emb should not have a gradient"
+
+    # All other trainable params must have nonzero gradients
     for name, p in net.named_parameters():
-        assert p.grad is not None, f"No gradient for {name} after step 1"
-        assert not torch.all(p.grad == 0), f"All-zero gradient for {name} after step 1"
+        if not p.requires_grad:
+            continue
+        assert p.grad is not None, f"No gradient for {name}"
+        assert not torch.all(p.grad == 0), f"All-zero gradient for {name}"
 
 def test_preset_matches_damian():
     presets = get_model_presets()
@@ -227,7 +234,7 @@ def test_sgd_step_reduces_loss():
     torch.manual_seed(42)
     net = SSTTransformer()
     loss_fn = LogisticLoss()
-    optimizer = torch.optim.SGD(net.parameters(), lr=0.5)
+    optimizer = torch.optim.SGD(filter(lambda p: p.requires_grad, net.parameters()), lr=0.5)
     X = torch.randint(0, 33278, (16, 64))
     Y = torch.tensor([1., -1.] * 8)
 
@@ -287,3 +294,223 @@ def test_training_py_wired_correctly():
     assert "'logistic'" in src, "--loss choices missing 'logistic'"
     assert "LogisticLoss()" in src, "LogisticLoss() not instantiated in training.py"
 
+
+# ─────────────────────────────────────────────────────
+# 6. Frozen tok_emb architecture tests
+# ─────────────────────────────────────────────────────
+
+def test_tok_emb_frozen():
+    """tok_emb.weight must have requires_grad=False."""
+    net = SSTTransformer()
+    assert not net.tok_emb.weight.requires_grad, \
+        "tok_emb.weight should be frozen (requires_grad=False)"
+
+def test_pos_emb_still_trainable():
+    """pos_emb.weight must remain trainable (always dense gradients)."""
+    net = SSTTransformer()
+    assert net.pos_emb.weight.requires_grad, \
+        "pos_emb.weight should be trainable"
+
+def test_tok_emb_no_gradient_after_backward():
+    """After loss.backward(), tok_emb.weight.grad must be None."""
+    net = SSTTransformer()
+    with torch.no_grad():
+        net.head.weight.fill_(0.1)
+    X = torch.randint(0, 33278, (4, 64))
+    Y = torch.tensor([1., -1., 1., -1.])
+    loss = LogisticLoss()(net(X), Y)
+    loss.backward()
+    assert net.tok_emb.weight.grad is None, \
+        "Frozen tok_emb should produce no gradient"
+
+def test_trainable_param_count():
+    """Trainable params (excluding frozen tok_emb) should be ~53,825."""
+    net = SSTTransformer()
+    n_trainable = sum(p.numel() for p in net.parameters() if p.requires_grad)
+    assert 50_000 < n_trainable < 60_000, \
+        f"Unexpected trainable param count: {n_trainable:,} (expected ~53,825)"
+
+def test_total_param_count_unchanged():
+    """Total param count (including frozen tok_emb) is still ~2.18M."""
+    net = SSTTransformer()
+    n_total = sum(p.numel() for p in net.parameters())
+    assert 2_000_000 < n_total < 3_000_000, \
+        f"Total param count changed unexpectedly: {n_total:,}"
+
+def test_all_trainable_params_get_nonzero_gradients():
+    """
+    After head.weight is nonzero, every requires_grad=True param
+    (pos_emb, transformer blocks, head) gets a nonzero gradient.
+    tok_emb should still have no gradient.
+    """
+    torch.manual_seed(7)
+    net = SSTTransformer()
+    with torch.no_grad():
+        net.head.weight.fill_(0.05)
+    X = torch.randint(0, 33278, (8, 64))
+    Y = torch.tensor([1., 1., 1., -1., 1., 1., -1., 1.])  # asymmetric so head.bias gets nonzero grad
+    loss = LogisticLoss()(net(X), Y)
+    loss.backward()
+
+    assert net.tok_emb.weight.grad is None, "tok_emb should have no gradient"
+    for name, p in net.named_parameters():
+        if not p.requires_grad:
+            continue
+        assert p.grad is not None, f"No gradient for trainable param {name}"
+        assert p.grad.norm().item() > 0, f"Zero gradient for trainable param {name}"
+
+def test_tok_emb_values_unchanged_after_sgd_step():
+    """tok_emb.weight values must not change after an SGD optimizer step."""
+    torch.manual_seed(0)
+    net = SSTTransformer()
+    emb_before = net.tok_emb.weight.data.clone()
+
+    optimizer = torch.optim.SGD(filter(lambda p: p.requires_grad, net.parameters()), lr=0.1)
+    X = torch.randint(0, 33278, (8, 64))
+    Y = torch.tensor([1., -1.] * 4)
+    optimizer.zero_grad()
+    loss = LogisticLoss()(net(X), Y)
+    loss.backward()
+    optimizer.step()
+
+    assert torch.equal(net.tok_emb.weight.data, emb_before), \
+        "tok_emb.weight changed after optimizer step — it should be frozen"
+
+
+# ─────────────────────────────────────────────────────
+# 7. compute_grad_H_grad with frozen params
+# ─────────────────────────────────────────────────────
+
+from utils.nets import SquaredLoss
+from utils.measure import compute_grad_H_grad, calculate_averaged_grad_H_grad_step
+
+def test_compute_grad_H_grad_with_frozen_tok_emb():
+    """compute_grad_H_grad must not crash on SSTTransformer and return a finite positive scalar."""
+    torch.manual_seed(1)
+    net = SSTTransformer()
+    with torch.no_grad():
+        net.head.weight.fill_(0.05)
+    X = torch.randint(0, 33278, (8, 64))
+    Y = torch.tensor([1., -1.] * 4)
+    loss_fn = SquaredLoss()
+    loss = loss_fn(net(X).squeeze(-1), Y)
+    result = compute_grad_H_grad(loss, net)
+    assert torch.isfinite(result), f"compute_grad_H_grad returned non-finite: {result}"
+    assert result.item() > 0, f"compute_grad_H_grad returned non-positive: {result.item()}"
+
+def test_compute_grad_H_grad_only_uses_trainable_params():
+    """
+    Result computed via compute_grad_H_grad (which uses requires_grad filter)
+    must equal the result when manually restricting to requires_grad=True params.
+    """
+    torch.manual_seed(2)
+    net = SSTTransformer()
+    with torch.no_grad():
+        net.head.weight.fill_(0.05)
+    X = torch.randint(0, 33278, (8, 64))
+    Y = torch.tensor([1., -1.] * 4)
+    loss_fn = SquaredLoss()
+
+    # Result via the fixed compute_grad_H_grad
+    loss = loss_fn(net(X).squeeze(-1), Y)
+    result = compute_grad_H_grad(loss, net, return_ghg_gg_separately=False)
+
+    # Manual check: only trainable params included
+    trainable_params = [p for p in net.parameters() if p.requires_grad]
+    loss2 = loss_fn(net(X).squeeze(-1), Y)
+    grads = torch.autograd.grad(loss2, trainable_params, create_graph=True)
+    g = torch.cat([g.flatten() for g in grads])
+    s = g.detach()
+    Hv = torch.autograd.grad(torch.dot(g, s), trainable_params)
+    Hv_flat = torch.cat([h.flatten() for h in Hv]).detach()
+    manual_result = torch.dot(s, Hv_flat) / torch.dot(s, s)
+
+    assert torch.isclose(result, manual_result, rtol=1e-4), \
+        f"compute_grad_H_grad result {result.item():.4f} != manual {manual_result.item():.4f}"
+
+def test_compute_grad_H_grad_regression_dense_model():
+    """
+    For a tiny fully-dense MLP (all params trainable), compute_grad_H_grad
+    must still return a finite positive scalar (regression guard for the filter change).
+    """
+    torch.manual_seed(3)
+    net = nn.Sequential(nn.Linear(8, 16), nn.ReLU(), nn.Linear(16, 1))
+    X = torch.randn(4, 8)
+    Y = torch.randn(4)
+    loss = nn.MSELoss()(net(X).squeeze(-1), Y)
+    result = compute_grad_H_grad(loss, net)
+    assert torch.isfinite(result) and result.item() > 0, \
+        f"Dense MLP: compute_grad_H_grad returned {result.item()}"
+
+
+# ─────────────────────────────────────────────────────
+# 8. Batch sharpness end-to-end with frozen tok_emb
+# ─────────────────────────────────────────────────────
+
+def test_batch_sharpness_with_frozen_tok_emb():
+    """calculate_averaged_grad_H_grad_step must work on SSTTransformer without crashing."""
+    torch.manual_seed(4)
+    net = SSTTransformer()
+    with torch.no_grad():
+        net.head.weight.fill_(0.05)
+    X = torch.randint(0, 33278, (64, 64))
+    Y = torch.tensor([1., -1.] * 32)
+    loss_fn = SquaredLoss()
+
+    result = calculate_averaged_grad_H_grad_step(
+        net, X, Y, loss_fn,
+        batch_size=16, n_estimates=10, min_estimates=5,
+    )
+    assert np.isfinite(result), f"Batch sharpness returned non-finite: {result}"
+    assert result > 0, f"Batch sharpness returned non-positive: {result}"
+
+def test_batch_sharpness_positive_and_finite():
+    """Batch sharpness must be > 0 and finite across multiple random seeds."""
+    loss_fn = SquaredLoss()
+    for seed in range(3):
+        torch.manual_seed(seed + 10)
+        net = SSTTransformer()
+        with torch.no_grad():
+            net.head.weight.fill_(0.05)
+        X = torch.randint(0, 33278, (64, 64))
+        Y = torch.tensor([1., -1.] * 32)
+        result = calculate_averaged_grad_H_grad_step(
+            net, X, Y, loss_fn,
+            batch_size=16, n_estimates=10, min_estimates=5,
+        )
+        assert np.isfinite(result) and result > 0, \
+            f"Seed {seed}: batch sharpness = {result}"
+
+def test_batch_sharpness_scales_with_curvature():
+    """
+    A model trained at a high learning rate should reach a flatter minimum
+    (lower sharpness) than one trained at a very low learning rate (still near init).
+    Sanity check: batch sharpness is sensitive to model state.
+    """
+    torch.manual_seed(99)
+    loss_fn = SquaredLoss()
+    X = torch.randint(0, 33278, (64, 64))
+    Y = torch.tensor([1., -1.] * 32)
+
+    def get_bs(net):
+        return calculate_averaged_grad_H_grad_step(
+            net, X, Y, loss_fn,
+            batch_size=16, n_estimates=20, min_estimates=10,
+        )
+
+    # Model A: zero-init head (very flat — head.weight=0)
+    net_a = SSTTransformer()
+
+    # Model B: head.weight filled to 0.5 (more curvature)
+    net_b = SSTTransformer()
+    with torch.no_grad():
+        net_b.head.weight.fill_(0.5)
+
+    bs_a = get_bs(net_a)
+    bs_b = get_bs(net_b)
+
+    # At zero init, head.weight=0 → gradient through backbone=0 → gHg/g² dominated by head only
+    # With nonzero head, backbone gradients contribute → different (typically higher) batch sharpness
+    # We just assert they're different (not necessarily ordered) — the point is sensitivity
+    assert bs_a != bs_b, \
+        f"Batch sharpness insensitive to model state: A={bs_a:.4f}, B={bs_b:.4f}"

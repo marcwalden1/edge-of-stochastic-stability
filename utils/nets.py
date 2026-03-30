@@ -267,6 +267,7 @@ class SSTTransformer(nn.Module):
     def __init__(self, vocab_size=33278, seq_len=64, d_model=64, n_heads=2, n_layers=2, n_classes=1):
         super().__init__()
         self.tok_emb = nn.Embedding(vocab_size, d_model)
+        self.tok_emb.weight.requires_grad_(False)  # frozen: sparse per-batch gradients would break batch sharpness
         self.pos_emb = nn.Embedding(seq_len, d_model)
         self.blocks = nn.ModuleList([SSTTransformerBlock(d_model, n_heads) for _ in range(n_layers)])
         self.head = nn.Linear(d_model, n_classes, bias=True)
