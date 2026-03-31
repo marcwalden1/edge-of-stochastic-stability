@@ -7,7 +7,7 @@
 #SBATCH --gres=gpu:1
 #SBATCH --mem=48G
 #SBATCH --cpus-per-task=4
-#SBATCH --time=08:00:00
+#SBATCH --time=06:00:00
 #SBATCH --array=0-9
 
 eval "$(conda shell.bash hook)"
