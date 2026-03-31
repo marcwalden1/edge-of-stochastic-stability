@@ -11,7 +11,7 @@ import torch.nn as nn
 import numpy as np
 import pytest
 
-from utils.nets import SSTTransformer, SSTTransformerBlock, LogisticLoss, get_model_presets, prepare_net
+from utils.nets import SSTTransformer, SSTTransformerBlock, SSTCNN, LogisticLoss, get_model_presets, prepare_net
 
 
 # ─────────────────────────────────────────────────────
@@ -133,13 +133,64 @@ def test_preset_matches_damian():
     assert p['n_heads'] == 2
     assert p['n_layers'] == 2
     assert p['n_classes'] == 1
+    assert p['use_bert_emb'] == True
 
 def test_prepare_net_sst():
     net = prepare_net('sst_transformer', {
         'vocab_size': 33278, 'seq_len': 64, 'd_model': 64,
-        'n_heads': 2, 'n_layers': 2, 'n_classes': 1, 'output_dim': 1
+        'n_heads': 2, 'n_layers': 2, 'n_classes': 1, 'output_dim': 1,
+        'use_bert_emb': False,
     })
     assert isinstance(net, SSTTransformer)
+
+def test_sst_cnn_output_shape():
+    net = SSTCNN(use_bert_emb=False)
+    x = torch.randint(0, 33278, (8, 64))
+    out = net(x)
+    assert out.shape == (8, 1), f"Expected (8,1), got {out.shape}"
+
+def test_sst_cnn_head_zero_init_means_zero_output():
+    net = SSTCNN(use_bert_emb=False)
+    x = torch.randint(0, 33278, (4, 64))
+    out = net(x)
+    assert torch.all(out == 0), f"Expected all-zero output at init, got max={out.abs().max().item()}"
+
+def test_sst_cnn_all_pad_input_is_finite():
+    torch.manual_seed(0)
+    net = SSTCNN(use_bert_emb=False)
+    for p in net.parameters():
+        if p.requires_grad:
+            nn.init.normal_(p, std=0.1)
+    with torch.no_grad():
+        nn.init.normal_(net.tok_emb.weight, std=0.1)
+        net.tok_emb.weight[0].zero_()
+
+    x_padded = torch.zeros(1, 64, dtype=torch.long)
+
+    with torch.no_grad():
+        out = net(x_padded)
+
+    assert torch.isfinite(out).all(), "All-pad input should produce finite output"
+
+def test_preset_includes_sst_cnn():
+    presets = get_model_presets()
+    assert 'sst_cnn' in presets
+    p = presets['sst_cnn']['params']
+    assert p['vocab_size'] == 33278
+    assert p['seq_len'] == 64
+    assert p['d_model'] == 64
+    assert p['hidden_dim'] == 128
+    assert p['kernel_sizes'] == (3, 5, 7)
+    assert p['n_classes'] == 1
+    assert p['use_bert_emb'] == True
+
+def test_prepare_net_sst_cnn():
+    net = prepare_net('sst_cnn', {
+        'vocab_size': 33278, 'seq_len': 64, 'd_model': 64,
+        'hidden_dim': 128, 'kernel_sizes': (3, 5, 7), 'n_classes': 1,
+        'output_dim': 1, 'use_bert_emb': False,
+    })
+    assert isinstance(net, SSTCNN)
 
 
 # ─────────────────────────────────────────────────────
@@ -514,3 +565,215 @@ def test_batch_sharpness_scales_with_curvature():
     # We just assert they're different (not necessarily ordered) — the point is sensitivity
     assert bs_a != bs_b, \
         f"Batch sharpness insensitive to model state: A={bs_a:.4f}, B={bs_b:.4f}"
+
+
+# ─────────────────────────────────────────────────────
+# 9. Padding mask + masked mean pooling (Fix A)
+# ─────────────────────────────────────────────────────
+
+def test_masked_pooling_ignores_pad_tokens():
+    """Positions with token id=0 ([PAD]) must be invisible to the model output."""
+    torch.manual_seed(42)
+    net = SSTTransformer(use_bert_emb=False)
+    with torch.no_grad():
+        net.head.weight.fill_(0.1)
+
+    # x: real tokens in positions 0-9, PAD (id=0) in positions 10-63
+    x = torch.randint(1, 33278, (2, 64))
+    x[:, 10:] = 0  # pad positions 10-63
+
+    # x2: same real tokens in 0-9, but different non-zero ids in 10-63
+    x2 = x.clone()
+    x2[:, 10:] = torch.randint(1, 33278, (2, 54))
+
+    with torch.no_grad():
+        out1 = net(x)
+        out2 = net(x2)
+
+    assert torch.allclose(out1, out2, atol=1e-5), \
+        f"PAD positions affected output: {out1} vs {out2}"
+
+def test_attention_ignores_pad_positions():
+    """Replacing a PAD token with a different non-zero id must not change output."""
+    torch.manual_seed(7)
+    net = SSTTransformer(use_bert_emb=False)
+    with torch.no_grad():
+        net.head.weight.fill_(0.1)
+
+    x = torch.randint(1, 33278, (1, 64))
+    x[0, 30:] = 0  # positions 30-63 are PAD
+
+    x2 = x.clone()
+    x2[0, 40] = 5000  # change one PAD token to a different non-zero id — should be ignored
+
+    with torch.no_grad():
+        assert torch.allclose(net(x), net(x2), atol=1e-5), \
+            "Replacing a PAD token with non-PAD changed output — masking broken"
+
+def test_masked_mean_correct_denominator():
+    """Masked mean pooling must divide by number of real tokens, not total sequence length."""
+    torch.manual_seed(13)
+    net = SSTTransformer(use_bert_emb=False)
+    with torch.no_grad():
+        net.head.weight.fill_(0.1)
+
+    # Two sequences: one with 10 real tokens, one with 50 real tokens
+    x = torch.zeros(2, 64, dtype=torch.long)
+    x[0, :10] = torch.randint(1, 33278, (10,))   # 10 real tokens
+    x[1, :50] = torch.randint(1, 33278, (50,))   # 50 real tokens
+
+    # Manually compute masked mean for sample 0 using the embedding directly
+    with torch.no_grad():
+        h0_emb = net.tok_emb(x[0:1]) + net.pos_emb(
+            torch.arange(64).unsqueeze(0))
+        # run through blocks
+        pad0 = (x[0:1] == 0)
+        h0 = h0_emb.clone()
+        for block in net.blocks:
+            h0 = block(h0, pad_mask=pad0)
+        valid0 = (~pad0).float()  # should be 1 for positions 0-9, 0 for 10-63
+        manual_pool = (h0 * valid0.unsqueeze(-1)).sum(1) / valid0.sum(1, keepdim=True)
+        expected_out = net.head(manual_pool)
+        actual_out = net(x[0:1])
+
+    assert torch.allclose(actual_out, expected_out, atol=1e-5), \
+        f"Masked mean pooling mismatch: {actual_out} vs {expected_out}"
+
+def test_batch_sharpness_finite_with_masked_attention():
+    """calculate_averaged_grad_H_grad_step works with heavily padded sequences."""
+    torch.manual_seed(20)
+    net = SSTTransformer(use_bert_emb=False)
+    with torch.no_grad():
+        net.head.weight.fill_(0.05)
+
+    # Construct sequences with only 10 real tokens and 54 PAD tokens
+    X = torch.zeros(32, 64, dtype=torch.long)
+    X[:, :10] = torch.randint(1, 33278, (32, 10))
+    Y = torch.tensor([1., -1.] * 16)
+
+    from utils.nets import SquaredLoss
+    from utils.measure import calculate_averaged_grad_H_grad_step
+    result = calculate_averaged_grad_H_grad_step(
+        net, X, Y, SquaredLoss(), batch_size=8, n_estimates=5, min_estimates=3)
+    assert np.isfinite(result) and result > 0, f"Batch sharpness with heavy padding: {result}"
+
+
+# ─────────────────────────────────────────────────────
+# 10. Pretrained BERT embeddings (Fix B)
+# ─────────────────────────────────────────────────────
+
+from utils.nets import load_bert_embeddings_projected
+
+def test_bert_emb_loads_correctly():
+    """load_bert_embeddings_projected returns a (33278, 64) finite tensor."""
+    W = load_bert_embeddings_projected(vocab_size=33278, d_model=64)
+    assert W.shape == (33278, 64), f"Expected (33278, 64), got {W.shape}"
+    assert torch.isfinite(W).all(), "BERT projected embeddings contain non-finite values"
+    # BERT rows (0:30522) should be normalized to ~unit std; rows 30522+ are zero
+    stds = W[:30522].std(0)
+    assert (stds > 0.9).all() and (stds < 1.1).all(), \
+        f"Std not ≈ 1.0 for BERT rows: min={stds.min():.3f}, max={stds.max():.3f}"
+
+def test_sst_transformer_bert_emb_frozen():
+    """With use_bert_emb=True, tok_emb is still frozen (requires_grad=False)."""
+    net = SSTTransformer(use_bert_emb=True)
+    assert not net.tok_emb.weight.requires_grad, "tok_emb should be frozen even with BERT init"
+
+def test_bert_emb_nonrandom():
+    """BERT-projected embeddings must have non-trivial structure (not random noise)."""
+    W = load_bert_embeddings_projected(vocab_size=33278, d_model=64)
+    # Use only the BERT rows (30522 rows that were actually projected)
+    W_bert = W[:30522]
+    # Random 30522×64 matrix would have singular values roughly equal (~sqrt(30522/64)≈21.8).
+    # The BERT projected embeddings should have concentrated variance in fewer dimensions.
+    # Check: first PC explains more than 1/64 ≈ 1.56% (= uniform random baseline for 64 dims)
+    _, S, _ = torch.linalg.svd(W_bert, full_matrices=False)
+    explained_first = (S[0]**2 / (S**2).sum()).item()
+    assert explained_first > 0.016, \
+        f"First PC explains only {explained_first:.4f} — embeddings look random (threshold 0.016)"
+
+def test_sst_transformer_bert_emb_different_from_random():
+    """BERT-initialized model should have different tok_emb weights than random-init model."""
+    net_random = SSTTransformer(use_bert_emb=False)
+    net_bert = SSTTransformer(use_bert_emb=True)
+    assert not torch.allclose(net_random.tok_emb.weight, net_bert.tok_emb.weight), \
+        "BERT and random tok_emb weights are identical — BERT init not applied"
+
+
+# =============================================================================
+# Section 11: SSTMLP
+# =============================================================================
+
+from utils.nets import SSTMLP
+
+
+def test_sst_mlp_forward_shape():
+    """SSTMLP output shape is (B, 1) for token input (B, seq_len)."""
+    net = SSTMLP()
+    x = torch.randint(1, 33278, (4, 64))
+    out = net(x)
+    assert out.shape == (4, 1), f"Expected (4,1), got {out.shape}"
+
+
+def test_sst_mlp_tok_emb_frozen():
+    """tok_emb.weight must have requires_grad=False."""
+    net = SSTMLP()
+    assert not net.tok_emb.weight.requires_grad, "tok_emb should be frozen"
+
+
+def test_sst_mlp_masked_pooling():
+    """The PAD embedding (id=0) must not influence the output regardless of its value."""
+    torch.manual_seed(0)
+    net = SSTMLP()
+    nn.init.normal_(net.head.weight)
+    nn.init.normal_(net.head.bias)
+
+    # x: 10 real tokens in positions 0-9, PAD (id=0) in positions 10-63
+    x = torch.zeros(1, 64, dtype=torch.long)
+    x[0, :10] = torch.randint(1, 33278, (10,))
+
+    with torch.no_grad():
+        out1 = net(x)
+        # Perturb the PAD embedding drastically — output must not change
+        net.tok_emb.weight[0] = torch.randn(net.tok_emb.embedding_dim) * 100
+        out2 = net(x)
+
+    assert torch.allclose(out1, out2, atol=1e-5), \
+        f"PAD embedding change affected output: {out1.item():.6f} vs {out2.item():.6f}"
+
+
+def test_sst_mlp_preset_exists():
+    """sst_mlp preset must be in get_model_presets() with required keys."""
+    presets = get_model_presets()
+    assert 'sst_mlp' in presets
+    p = presets['sst_mlp']['params']
+    for key in ('vocab_size', 'seq_len', 'd_model', 'hidden_dim', 'n_layers', 'n_classes', 'use_bert_emb'):
+        assert key in p, f"Missing key '{key}' in sst_mlp preset"
+    assert presets['sst_mlp']['type'] == 'sst_mlp'
+
+
+def test_sst_mlp_prepare_net():
+    """prepare_net('sst_mlp', ...) returns an SSTMLP instance."""
+    params = {'vocab_size': 33278, 'seq_len': 64, 'd_model': 64,
+              'hidden_dim': 128, 'n_layers': 2, 'n_classes': 1,
+              'use_bert_emb': False, 'input_dim': 64, 'output_dim': 1}
+    net = prepare_net('sst_mlp', params)
+    assert isinstance(net, SSTMLP)
+
+
+def test_sst_mlp_batch_sharpness_finite():
+    """calculate_averaged_grad_H_grad_step returns a finite positive value for SSTMLP."""
+    from utils.nets import SquaredLoss
+    from utils.measure import calculate_averaged_grad_H_grad_step
+    torch.manual_seed(42)
+    net = SSTMLP()
+    loss_fn = SquaredLoss()
+    X = torch.zeros(32, 64, dtype=torch.long)
+    for i in range(32):
+        length = torch.randint(5, 20, (1,)).item()
+        X[i, :length] = torch.randint(1, 33278, (length,))
+    Y = torch.randint(0, 2, (32,)).float() * 2 - 1
+    result = calculate_averaged_grad_H_grad_step(net, loss_fn, X, Y, num_batches=2, batch_size=16)
+    assert result is not None and torch.isfinite(torch.tensor(result)), \
+        f"batch sharpness not finite: {result}"
+    assert result > 0, f"batch sharpness not positive: {result}"

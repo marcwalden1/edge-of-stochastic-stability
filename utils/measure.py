@@ -1198,9 +1198,18 @@ def calculate_averaged_grad_H_grad_step(net,
                               return_ghg_gg_separately = False,
                               with_replacement = False,
                               return_confidence_interval: bool = False,
-                              confidence_level: float = 0.95
+                              confidence_level: float = 0.95,
+                              num_batches = None
                               ):
     """Backward-compatible wrapper for the batch sharpness estimator E[gHg/g²]."""
+    # Legacy call pattern in older tests/scripts:
+    #   calculate_averaged_grad_H_grad_step(net, loss_fn, X, Y, num_batches=..., batch_size=...)
+    if callable(X) and not callable(loss_fn):
+        X, Y, loss_fn = Y, loss_fn, X
+
+    if num_batches is not None:
+        n_estimates = num_batches
+
     if return_ghg_gg_separately:
         raise NotImplementedError("Returning gHg and g² separately is not supported in this refactor.")
 

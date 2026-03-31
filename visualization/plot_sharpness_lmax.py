@@ -314,7 +314,7 @@ def save_figure(fig: plt.Figure, run: RunInfo) -> Path:
     img_dir = script_dir / 'img'
     img_dir.mkdir(exist_ok=True)
 
-    filename = f"{run.folder.name}_sharpness_lmax.png"
+    filename = f"{run.folder.parent.name}_{run.folder.name}_sharpness_lmax.png"
     output_path = img_dir / filename
     fig.savefig(output_path, dpi=300, bbox_inches='tight')
     plt.close(fig)

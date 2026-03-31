@@ -4,6 +4,8 @@ slurm
 random
 .vscode
 slurm_scripts/batch_size_*.sbatch
+logs/
+visualization/img/
 __pycache__
 *.pyc
 *.pyo

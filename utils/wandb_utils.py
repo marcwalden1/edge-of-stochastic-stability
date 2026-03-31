@@ -84,7 +84,7 @@ def init_wandb(args, step_to_start):
             name=run_name,
             config=wandb_config,
             fork_from=f"{args.cont_run_id}?_step={step_to_start}",
-            save_code=True,
+            save_code=False,
             tags=tags if tags else None,
             notes=getattr(args, 'wandb_notes', None)
         )
@@ -96,7 +96,7 @@ def init_wandb(args, step_to_start):
             mode=os.getenv("WANDB_MODE", "offline"),   # honours your env var
             name=run_name,
             config=vars(args),      # captures all CLI flags
-            save_code=True,         # snapshot calling file & git commit
+            save_code=False,        # disabled: save_code=True causes git walk hang on NFS
             tags=tags if tags else None,
             notes=getattr(args, 'wandb_notes', None)
         )
