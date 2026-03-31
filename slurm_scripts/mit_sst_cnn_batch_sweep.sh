@@ -8,7 +8,7 @@
 #SBATCH --mem=48G
 #SBATCH --cpus-per-task=4
 #SBATCH --time=08:00:00
-#SBATCH --array=0-8
+#SBATCH --array=0-9
 
 eval "$(conda shell.bash hook)"
 conda activate eoss
@@ -25,11 +25,12 @@ export WANDB_MODE=offline
 #   3   sst_cnn   8      150000
 #   4   sst_cnn   16      75000
 #   5   sst_cnn   32      75000
-#   6   sst_cnn   128     75000
-#   7   sst_cnn   256     75000
-#   8   sst_cnn   8192    75000
+#   6   sst_cnn   64      75000
+#   7   sst_cnn   128     75000
+#   8   sst_cnn   256     75000
+#   9   sst_cnn   8192    75000
 
-BATCH_SIZES=(2 4 6 8 16 32 128 256 8192)
+BATCH_SIZES=(2 4 6 8 16 32 64 128 256 8192)
 B=${BATCH_SIZES[$SLURM_ARRAY_TASK_ID]}
 
 if [ "$B" -lt 16 ]; then

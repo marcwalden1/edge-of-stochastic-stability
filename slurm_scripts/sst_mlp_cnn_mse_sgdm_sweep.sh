@@ -8,7 +8,7 @@
 #SBATCH --mem=48G
 #SBATCH --cpus-per-task=4
 #SBATCH --time=08:00:00
-#SBATCH --array=0-17
+#SBATCH --array=0-19
 
 export PATH=/n/home06/mwalden/.conda/envs/eoss/bin:$PATH
 export PYTHONUNBUFFERED=1
@@ -24,24 +24,26 @@ export WANDB_MODE=offline
 #   3   sst_mlp   8
 #   4   sst_mlp   16
 #   5   sst_mlp   32
-#   6   sst_mlp   128
-#   7   sst_mlp   256
-#   8   sst_mlp   8192
-#   9   sst_cnn   2
-#  10   sst_cnn   4
-#  11   sst_cnn   6
-#  12   sst_cnn   8
-#  13   sst_cnn   16
-#  14   sst_cnn   32
-#  15   sst_cnn   128
-#  16   sst_cnn   256
-#  17   sst_cnn   8192
+#   6   sst_mlp   64
+#   7   sst_mlp   128
+#   8   sst_mlp   256
+#   9   sst_mlp   8192
+#  10   sst_cnn   2
+#  11   sst_cnn   4
+#  12   sst_cnn   6
+#  13   sst_cnn   8
+#  14   sst_cnn   16
+#  15   sst_cnn   32
+#  16   sst_cnn   64
+#  17   sst_cnn   128
+#  18   sst_cnn   256
+#  19   sst_cnn   8192
 
-BATCH_SIZES=(2 4 6 8 16 32 128 256 8192)
+BATCH_SIZES=(2 4 6 8 16 32 64 128 256 8192)
 MODELS=(sst_mlp sst_cnn)
 
-MODEL_INDEX=$((SLURM_ARRAY_TASK_ID / 9))
-B_INDEX=$((SLURM_ARRAY_TASK_ID % 9))
+MODEL_INDEX=$((SLURM_ARRAY_TASK_ID / 10))
+B_INDEX=$((SLURM_ARRAY_TASK_ID % 10))
 
 MODEL=${MODELS[$MODEL_INDEX]}
 B=${BATCH_SIZES[$B_INDEX]}
