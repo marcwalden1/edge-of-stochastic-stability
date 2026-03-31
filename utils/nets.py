@@ -158,6 +158,30 @@ def get_model_presets():
                 'use_bert_emb': True,
             }
         },
+        'sst_lstm': {
+            'type': 'sst_lstm',
+            'params': {
+                'vocab_size': 33278,
+                'seq_len': 64,
+                'd_model': 64,
+                'hidden_dim': 128,
+                'n_layers': 1,
+                'n_classes': 1,
+                'use_bert_emb': True,
+            }
+        },
+        'sst_ssm': {
+            'type': 'sst_ssm',
+            'params': {
+                'vocab_size': 33278,
+                'seq_len': 64,
+                'd_model': 64,
+                'd_inner': 64,
+                'd_state': 16,
+                'n_classes': 1,
+                'use_bert_emb': True,
+            }
+        },
     }
     return model_presets
 
@@ -419,6 +443,109 @@ class SSTCNN(nn.Module):
             z = torch.where(all_pad, torch.zeros_like(z), z)
             pooled.append(z.max(dim=-1).values)
         return self.head(torch.cat(pooled, dim=-1))
+
+
+class SSTLSTM(nn.Module):
+    """LSTM classifier for SST-2 with frozen BERT-projected token embeddings.
+
+    Frozen tok_emb → LSTM → masked mean pool over non-PAD positions → linear head.
+    No LayerNorm, no dropout. Zero-init head for EoS analysis.
+    """
+    def __init__(self, vocab_size=33278, seq_len=64, d_model=64,
+                 hidden_dim=128, n_layers=1, n_classes=1, use_bert_emb=False):
+        super().__init__()
+        self.tok_emb = nn.Embedding(vocab_size, d_model)
+        if use_bert_emb:
+            self.tok_emb.weight.data.copy_(load_bert_embeddings_projected(vocab_size, d_model))
+        self.tok_emb.weight.requires_grad_(False)
+        self.lstm = nn.LSTM(d_model, hidden_dim, num_layers=n_layers, batch_first=True)
+        self.head = nn.Linear(hidden_dim, n_classes, bias=True)
+        nn.init.zeros_(self.head.weight)
+        nn.init.zeros_(self.head.bias)
+
+    def forward(self, x):
+        # x: (B, S) long token ids; id=0 is [PAD]
+        pad_mask = (x == 0)                                        # (B, S)
+        h = self.tok_emb(x)                                        # (B, S, d_model)
+        out, _ = self.lstm(h)                                      # (B, S, hidden_dim)
+        valid = (~pad_mask).float()                                 # (B, S)
+        pooled = (out * valid.unsqueeze(-1)).sum(1) / valid.sum(1, keepdim=True).clamp(min=1.0)
+        return self.head(pooled)                                    # (B, n_classes)
+
+
+class SSTSSM(nn.Module):
+    """Minimal selective state-space model (Mamba-inspired) for SST-2 classification.
+
+    Pure PyTorch implementation for full autograd / HVP compatibility.
+    No LayerNorm, no dropout. Zero-init head for EoS analysis.
+
+    Per time step t:
+      u_t  = in_proj(x_t)                          (B, d_inner)
+      Δ_t  = softplus(dt_proj(x_proj[Δ](u_t)))     (B, d_inner)  input-dependent step
+      B_t  = x_proj[B](u_t)                        (B, d_state)  selective input
+      C_t  = x_proj[C](u_t)                        (B, d_state)  selective output
+      A    = -exp(A_log)                            (d_inner, d_state)  stable diagonal
+      dA_t = exp(Δ_t[...,None] * A)               ZOH discretisation
+      dB_t = Δ_t[...,None] * B_t[:,None,:]
+      h_t  = dA_t * h_{t-1} + dB_t * u_t[...,None]
+      y_t  = (C_t[:,None,:] * h_t).sum(-1) + D * u_t
+      out_t = out_proj(y_t)                        (B, d_model)
+    Pool out_t over non-PAD positions → head.
+    """
+    def __init__(self, vocab_size=33278, seq_len=64, d_model=64,
+                 d_inner=64, d_state=16, n_classes=1, use_bert_emb=False):
+        super().__init__()
+        self.tok_emb = nn.Embedding(vocab_size, d_model)
+        if use_bert_emb:
+            self.tok_emb.weight.data.copy_(load_bert_embeddings_projected(vocab_size, d_model))
+        self.tok_emb.weight.requires_grad_(False)
+
+        self.d_inner = d_inner
+        self.d_state = d_state
+
+        self.in_proj  = nn.Linear(d_model, d_inner, bias=False)
+        # x_proj produces [Δ (1), B (d_state), C (d_state)] per token
+        self.x_proj   = nn.Linear(d_inner, 1 + 2 * d_state, bias=False)
+        # dt_proj expands scalar Δ to d_inner channels
+        self.dt_proj  = nn.Linear(1, d_inner, bias=True)
+        # A_log: log-spaced negative eigenvalues, shape (d_inner, d_state)
+        A_init = torch.arange(1, d_state + 1, dtype=torch.float).unsqueeze(0).expand(d_inner, -1)
+        self.A_log    = nn.Parameter(torch.log(A_init.clone()))
+        # D: skip connection (one per d_inner channel)
+        self.D        = nn.Parameter(torch.ones(d_inner))
+        self.out_proj = nn.Linear(d_inner, d_model, bias=False)
+
+        self.head = nn.Linear(d_model, n_classes, bias=True)
+        nn.init.zeros_(self.head.weight)
+        nn.init.zeros_(self.head.bias)
+        # Initialise dt_proj bias so softplus(bias) ≈ 0.1
+        nn.init.constant_(self.dt_proj.bias, math.log(math.expm1(0.1)))
+
+    def forward(self, x):
+        # x: (B, S) long token ids; id=0 is [PAD]
+        B, S = x.shape
+        pad_mask = (x == 0)                                        # (B, S)
+        emb = self.tok_emb(x)                                      # (B, S, d_model)
+
+        A = -torch.exp(self.A_log)                                 # (d_inner, d_state)
+        h = torch.zeros(B, self.d_inner, self.d_state, device=x.device, dtype=emb.dtype)
+
+        outputs = []
+        for t in range(S):
+            u = self.in_proj(emb[:, t, :])                         # (B, d_inner)
+            xz = self.x_proj(u)                                    # (B, 1+2*d_state)
+            dt_raw, B_t, C_t = xz.split([1, self.d_state, self.d_state], dim=-1)
+            dt = F.softplus(self.dt_proj(dt_raw))                  # (B, d_inner)
+            dA = torch.exp(dt.unsqueeze(-1) * A.unsqueeze(0))      # (B, d_inner, d_state)
+            dB = dt.unsqueeze(-1) * B_t.unsqueeze(1)               # (B, d_inner, d_state)
+            h = dA * h + dB * u.unsqueeze(-1)                      # (B, d_inner, d_state)
+            y = (C_t.unsqueeze(1) * h).sum(-1) + self.D * u        # (B, d_inner)
+            outputs.append(self.out_proj(y))                        # (B, d_model)
+
+        out = torch.stack(outputs, dim=1)                          # (B, S, d_model)
+        valid = (~pad_mask).float()                                 # (B, S)
+        pooled = (out * valid.unsqueeze(-1)).sum(1) / valid.sum(1, keepdim=True).clamp(min=1.0)
+        return self.head(pooled)                                    # (B, n_classes)
 
 
 class GPTBlock(nn.Module):
@@ -685,6 +812,28 @@ def prepare_net(model_type: str,
             d_model=params.get('d_model', 64),
             hidden_dim=params.get('hidden_dim', 128),
             kernel_sizes=params.get('kernel_sizes', (3, 5, 7)),
+            n_classes=params.get('n_classes', 1),
+            use_bert_emb=params.get('use_bert_emb', False),
+        )
+
+    if model_type == 'sst_lstm':
+        net = SSTLSTM(
+            vocab_size=params.get('vocab_size', 33278),
+            seq_len=params.get('seq_len', 64),
+            d_model=params.get('d_model', 64),
+            hidden_dim=params.get('hidden_dim', 128),
+            n_layers=params.get('n_layers', 1),
+            n_classes=params.get('n_classes', 1),
+            use_bert_emb=params.get('use_bert_emb', False),
+        )
+
+    if model_type == 'sst_ssm':
+        net = SSTSSM(
+            vocab_size=params.get('vocab_size', 33278),
+            seq_len=params.get('seq_len', 64),
+            d_model=params.get('d_model', 64),
+            d_inner=params.get('d_inner', 64),
+            d_state=params.get('d_state', 16),
             n_classes=params.get('n_classes', 1),
             use_bert_emb=params.get('use_bert_emb', False),
         )
