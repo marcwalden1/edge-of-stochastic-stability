@@ -253,7 +253,10 @@ class LogisticLoss(nn.Module):
         return -F.logsigmoid(input.squeeze(-1) * target).mean()
 
 
-_BERT_PROJ_CACHE = "/n/holylabs/LABS/kdbrantley_lab/Lab/mwalden/bert_emb_proj64.pt"
+_BERT_PROJ_CACHE_PATHS = [
+    "/n/holylabs/LABS/kdbrantley_lab/Lab/mwalden/bert_emb_proj64.pt",  # Harvard
+    os.path.expanduser("~/bert_emb_proj64.pt"),                         # MIT / other clusters
+]
 
 def load_bert_embeddings_projected(vocab_size=33278, d_model=64):
     """Load bert-base-uncased word embeddings projected to d_model dims via SVD.
@@ -266,8 +269,10 @@ def load_bert_embeddings_projected(vocab_size=33278, d_model=64):
     Returns a (vocab_size, d_model) tensor, detached, ready to copy into Embedding.weight.
     """
     import os
-    if os.path.exists(_BERT_PROJ_CACHE) and d_model == 64 and vocab_size == 33278:
-        return torch.load(_BERT_PROJ_CACHE, weights_only=True)
+    if d_model == 64 and vocab_size == 33278:
+        for cache_path in _BERT_PROJ_CACHE_PATHS:
+            if os.path.exists(cache_path):
+                return torch.load(cache_path, weights_only=True)
     from transformers import AutoModel
     model = AutoModel.from_pretrained("bert-base-uncased")
     W = model.embeddings.word_embeddings.weight.data.float().cpu()  # (30522, 768)
