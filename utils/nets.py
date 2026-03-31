@@ -255,7 +255,7 @@ class LogisticLoss(nn.Module):
 
 _BERT_PROJ_CACHE_PATHS = [
     "/n/holylabs/LABS/kdbrantley_lab/Lab/mwalden/bert_emb_proj64.pt",  # Harvard
-    os.path.expanduser("~/bert_emb_proj64.pt"),                         # MIT / other clusters
+    "~/bert_emb_proj64.pt",                                             # MIT / other clusters
 ]
 
 def load_bert_embeddings_projected(vocab_size=33278, d_model=64):
@@ -271,6 +271,7 @@ def load_bert_embeddings_projected(vocab_size=33278, d_model=64):
     import os
     if d_model == 64 and vocab_size == 33278:
         for cache_path in _BERT_PROJ_CACHE_PATHS:
+            cache_path = os.path.expanduser(cache_path)
             if os.path.exists(cache_path):
                 return torch.load(cache_path, weights_only=True)
     from transformers import AutoModel
